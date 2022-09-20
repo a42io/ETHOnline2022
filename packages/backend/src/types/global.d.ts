@@ -1,3 +1,6 @@
+import { Account } from '~/entities/account';
+import { JwtPayload } from 'jsonwebtoken';
+
 declare const process: {
     env: {
         NODE_ENV: string;
@@ -13,3 +16,16 @@ declare const process: {
         ALCHEMY_ARBITRUM_API_KEY: string;
     };
 };
+
+interface Context {
+    account: Account;
+    jsonPayload: JwtPayload | string;
+}
+
+declare global {
+    namespace Express {
+        interface Request {
+            context: Context;
+        }
+    }
+}

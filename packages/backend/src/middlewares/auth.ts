@@ -37,7 +37,7 @@ export const accessTokenAuth: express.RequestHandler = async (
 
     try {
         try {
-            res.locals.jsonPayload = verifyJwt(accessToken);
+            req.context.jsonPayload = verifyJwt(accessToken);
         } catch (_e) {
             return next(
                 unauthorizedException(
@@ -52,7 +52,7 @@ export const accessTokenAuth: express.RequestHandler = async (
                 notFoundException(MIDDLEWARE_AUTH_ERRORS.ACCOUNT_NOT_FOUND)
             );
         }
-        res.locals.account = account;
+        req.context.account = account;
         return next();
     } catch (e) {
         return next(unknownException(UNKNOWN_ERROR, e as Error));

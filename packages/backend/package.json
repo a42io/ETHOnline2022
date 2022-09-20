@@ -3,7 +3,7 @@
     "name": "backend",
     "version": "1.0.0",
     "scripts": {
-        "dev": "NODE_ENV=development ts-node-dev -r tsconfig-paths/register src/server.ts",
+        "dev": "NODE_ENV=development ts-node-dev -r tsconfig-paths/register --respawn --files src/server.ts",
         "build": "tsc",
         "type-check": "tsc --noEmit",
         "type-check:watch": "tsc --noEmit --watch",

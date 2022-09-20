@@ -37,3 +37,18 @@ export const MIDDLEWARE_ETH_AUTH_ERRORS = {
         description: 'Nonce Not Match',
     },
 };
+
+export const EVENT_API_ERRORS = {
+    EVENT_NOT_FOUND: {
+        code: '0x0021',
+        description: 'Event NotFound',
+    },
+    INVALID_ACCESS_TOKEN: {
+        code: '0x0002',
+        description: 'Invalid AccessToken',
+    },
+    ACCOUNT_NOT_FOUND: {
+        code: '0x0003',
+        description: 'Account NotFound',
+    },
+};
