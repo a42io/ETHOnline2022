@@ -1,14 +1,21 @@
 import express from 'express';
+import { Interval, DateTime } from 'luxon';
 import {
     notFoundException,
     unknownException,
 } from '~/middlewares/ErrorHandler';
 import { EVENT_API_ERRORS, UNKNOWN_ERROR } from '~/entities/error';
-import { getEvent, getEvents } from '~/repositories/event';
+import {
+    createEvent,
+    getEvent,
+    getEvents,
+    setEvent,
+} from '~/repositories/event';
 import { Condition, OrderBy } from '~/entities/query';
 import { Event } from '~/entities/event';
+import { mainnetProvider } from '~/libs/web3providers';
 
-export const events: express.RequestHandler = async (req, res, next) => {
+export const list: express.RequestHandler = async (req, res, next) => {
     const account = req.context.account;
     try {
         const cursor = req.query.cursor || undefined;
@@ -78,7 +85,7 @@ export const events: express.RequestHandler = async (req, res, next) => {
     }
 };
 
-export const event: express.RequestHandler = async (req, res, next) => {
+export const get: express.RequestHandler = async (req, res, next) => {
     const eventId = req.params.eventId;
     try {
         const event = await getEvent(eventId);
@@ -86,6 +93,70 @@ export const event: express.RequestHandler = async (req, res, next) => {
             return next(notFoundException(EVENT_API_ERRORS.EVENT_NOT_FOUND));
         }
         return res.json({ event });
+    } catch (e) {
+        return next(unknownException(UNKNOWN_ERROR, e as Error));
+    }
+};
+
+//todo a lot of validations
+export const create: express.RequestHandler = async (req, res, next) => {
+    const account = req.context.account;
+    try {
+        const event: Event = req.body;
+
+        // host setting
+        const ensName = await mainnetProvider.lookupAddress(account.id);
+        const resolver = ensName
+            ? await mainnetProvider.getResolver(ensName)
+            : null;
+        const avatar = resolver ? await resolver.getAvatar() : null;
+        event.host = {
+            addressOrEns: ensName || account.id,
+            avatarUrl: avatar?.url || '',
+        };
+
+        const record = await createEvent(event);
+        return res.json(record);
+    } catch (e) {
+        return next(unknownException(UNKNOWN_ERROR, e as Error));
+    }
+};
+
+//todo a lot of validations
+export const update: express.RequestHandler = async (req, res, next) => {
+    const account = req.context.account;
+    const eventId = req.params.eventId;
+    const event: Event = req.body;
+
+    if (eventId !== event.id) {
+        return next('');
+    }
+    try {
+        const ensName = await mainnetProvider.lookupAddress(account.id);
+        if (
+            event.host.addressOrEns !== ensName &&
+            event.host.addressOrEns !== account.id &&
+            !event.managers.some(
+                (r) => r.address === account.id && r.role === 'admin'
+            )
+        ) {
+            // todo
+            return next(EVENT_API_ERRORS.INVALID_ACCESS_TOKEN);
+        }
+
+        // todo キャンセルだったり重要な情報はイベント x 拾前から変更不可にする
+        const isBetween = Interval.fromDateTimes(
+            event.startAt as Date,
+            event.endAt as Date
+        ).contains(DateTime.now());
+
+        if (isBetween) {
+            // todo
+            return next(EVENT_API_ERRORS.INVALID_ACCESS_TOKEN);
+        }
+
+        await setEvent(event);
+        return res.json({ message: 'ok' });
     } catch (e) {
         return next(unknownException(UNKNOWN_ERROR, e as Error));
     }

@@ -36,11 +36,13 @@ export type Event = {
     allowList: AllowListValue[];
     startAt: Date | firestore.FieldValue;
     endAt: Date | firestore.FieldValue;
+    isCanceled?: boolean;
     createdAt: Date | firestore.FieldValue;
     updatedAt: Date | firestore.FieldValue;
+    canceledAt?: Date | firestore.FieldValue;
 };
 
-export function toDB(event: Event): DocumentData {
+export function toDB(event: Event | Omit<Event, 'id'>): DocumentData {
     return {
         cover: event.cover,
         title: event.title,
@@ -73,8 +75,10 @@ export function toDB(event: Event): DocumentData {
         timezone: event.timezone,
         start_at: event.startAt,
         end_at: event.endAt,
+        is_canceled: event.isCanceled,
         created_at: event.createdAt,
         updated_at: event.updatedAt,
+        canceled_at: event.canceledAt,
     };
 }
 

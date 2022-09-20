@@ -44,11 +44,11 @@ export const EVENT_API_ERRORS = {
         description: 'Event NotFound',
     },
     INVALID_ACCESS_TOKEN: {
-        code: '0x0002',
+        code: '0x0022',
         description: 'Invalid AccessToken',
     },
     ACCOUNT_NOT_FOUND: {
-        code: '0x0003',
+        code: '0x0023',
         description: 'Account NotFound',
     },
 };

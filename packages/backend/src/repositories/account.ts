@@ -19,7 +19,7 @@ export const getAccount = async (id: string): Promise<Account | null> => {
 export const setAccount = async (account: Account): Promise<Account | null> => {
     try {
         const data = toDB(account);
-        await accountsRef.doc(account.id).set(data);
+        await accountsRef.doc(account.id).set(data, { merge: true });
         return account;
     } catch (e) {
         console.warn(e);
@@ -34,7 +34,7 @@ export const refreshNonce = async (
         account.nonce = generateNonce();
         account.updatedAt = admin.firestore.FieldValue.serverTimestamp();
         const data = toDB(account);
-        await accountsRef.doc(account.id).set(data);
+        await accountsRef.doc(account.id).set(data, { merge: true });
         return account;
     } catch (e) {
         console.warn(e);
