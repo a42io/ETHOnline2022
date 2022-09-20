@@ -1,6 +1,6 @@
 {
     "semi": true,
     "tabWidth": 4,
-    "singleQuote": true
+    "singleQuote": true,
+    "overrides": [{ "files": ["*.json", "*.js"], "options": { "tabWidth": 4 } }]
 }
-  

@@ -1,24 +1,24 @@
 {
-  "name": "ETHOnline2022",
-  "version": "1.0.0",
-  "description": "Happy Mege day!",
-  "repository": "git@github.com:a42io/ETHOnline2022.git",
-  "author": "tachibana.eth",
-  "license": "MIT",
-  "private": true,
-  "workspaces": [
-    "packages/*"
-  ],
-  "devDependencies": {
-    "@typescript-eslint/eslint-plugin": "^5.38.0",
-    "eslint": "8.22.0",
-    "eslint-config-standard-with-typescript": "^23.0.0",
-    "eslint-plugin-import": "^2.26.0",
-    "eslint-plugin-n": "^15.2.5",
-    "eslint-plugin-promise": "^6.0.1",
-    "eslint-plugin-react": "^7.31.8",
-    "eslint-plugin-react-hooks": "^4.6.0",
-    "prettier": "^2.7.1",
-    "typescript": "^4.8.3"
-  }
+    "name": "ETHOnline2022",
+    "version": "1.0.0",
+    "description": "Happy Mege day!",
+    "repository": "git@github.com:a42io/ETHOnline2022.git",
+    "author": "tachibana.eth",
+    "license": "MIT",
+    "private": true,
+    "workspaces": [
+        "packages/*"
+    ],
+    "devDependencies": {
+        "@typescript-eslint/eslint-plugin": "^5.38.0",
+        "eslint": "8.22.0",
+        "eslint-config-standard-with-typescript": "^23.0.0",
+        "eslint-plugin-import": "^2.26.0",
+        "eslint-plugin-n": "^15.2.5",
+        "eslint-plugin-promise": "^6.0.1",
+        "eslint-plugin-react": "^7.31.8",
+        "eslint-plugin-react-hooks": "^4.6.0",
+        "prettier": "^2.7.1",
+        "typescript": "^4.8.3"
+    }
 }

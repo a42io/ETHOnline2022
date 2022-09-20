@@ -29,3 +29,5 @@ dist-ssr
 .firebase/
 .firebaserc
 firebase.json
+*admin.json
+.env
