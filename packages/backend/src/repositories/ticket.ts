@@ -6,6 +6,8 @@ import CollectionReference = firestore.CollectionReference;
 
 const db = admin.firestore();
 
+const ticketRef = db.collection('tickets');
+
 function getAccountTicketsPath(account: string): CollectionReference {
     return db.collection('accounts').doc(account).collection('tickets');
 }
@@ -57,6 +59,17 @@ export const getAccountTickets = async (
     }
 };
 
+export const getTicket = async (id: string): Promise<Ticket | null> => {
+    try {
+        const snapshot = await ticketRef.doc(id).get();
+        if (!snapshot.exists) return null;
+        return fromDB(snapshot);
+    } catch (e) {
+        console.warn(e);
+        return null;
+    }
+};
+
 export const getAccountTicket = async (
     account: string,
     id: string
@@ -73,15 +86,21 @@ export const getAccountTicket = async (
 
 export const createTicket = async (
     eventId: string,
-    ticket: Omit<Ticket, 'id'>
+    ticket: Omit<Ticket, 'id' | 'createdAt'>
 ): Promise<Ticket | null> => {
     try {
         const ref = getAccountTicketsPath(eventId);
         const id = ref.doc().id;
-        ticket.invalidated = false;
-        ticket.createdAt = admin.firestore.FieldValue.serverTimestamp();
-        const data = toDB(ticket);
+        const data = toDB({
+            ...ticket,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        // ticket/{id}
+        await ticketRef.doc(id).set(data, { merge: true });
+        // accounts/{accountId}/tickets/{id}
         await ref.doc(id).set(data, { merge: true });
+
         return { id, ...ticket } as Ticket;
     } catch (e) {
         console.warn(e);
@@ -95,15 +114,15 @@ export const invalidateTicket = async (
     ticket: Omit<Ticket, 'id'>
 ): Promise<Ticket | null> => {
     try {
+        const update = {
+            invalidated: true,
+            invalidated_at: firestore.FieldValue.serverTimestamp(),
+        };
+        // ticket/{id}
+        await ticketRef.doc(currentTicketId).set(update, { merge: true });
         const ref = getAccountTicketsPath(eventId);
-        await ref.doc(currentTicketId).set(
-            {
-                invalidated: true,
-                invalidated_at: firestore.FieldValue.serverTimestamp(),
-            },
-            { merge: true }
-        );
-
+        // accounts/{accountId}/tickets/{id}
+        await ref.doc(currentTicketId).set(update, { merge: true });
         return await createTicket(eventId, ticket);
     } catch (e) {
         console.warn(e);

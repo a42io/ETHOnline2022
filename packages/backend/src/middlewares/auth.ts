@@ -12,6 +12,7 @@ import {
     MIDDLEWARE_ETH_AUTH_ERRORS,
     UNKNOWN_ERROR,
 } from '~/entities/error';
+import { Account } from '~/entities/account';
 
 export function getTokenFromHeader(req: express.Request): string | undefined {
     if (!req.headers.authorization) return undefined;
@@ -59,7 +60,7 @@ export const accessTokenAuth: express.RequestHandler = async (
     }
 };
 
-export const ethAuth: express.RequestHandler = async (req, res, next) => {
+export const ethAuth: express.RequestHandler = async (req, _res, next) => {
     const { message, signature } = req.body;
     if (!message || !signature) {
         return next(
@@ -87,7 +88,7 @@ export const ethAuth: express.RequestHandler = async (req, res, next) => {
             );
         }
 
-        res.locals.user = await refreshNonce(account);
+        req.context.account = (await refreshNonce(account)) as Account;
         return next();
     } catch (e) {
         return next(unknownException(UNKNOWN_ERROR, e as Error));

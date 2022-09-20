@@ -4,19 +4,21 @@ import DocumentSnapshot = firestore.DocumentSnapshot;
 
 export type AdminRole = 'admin' | 'operator';
 
-export type AllowListValue =
-    | {
-          chainId: string;
-          tokenType: 'ERC721' | 'ERC1155';
-          contractAddress: string;
-          tokenId?: string;
-          availableUsageCount: number;
-      }
-    | {
-          tokenType: 'ENS';
-          ens: string;
-          availableUsageCount: number;
-      };
+export type AllowListENS = {
+    tokenType: 'ENS';
+    ens: string;
+    availableUsageCount: number;
+};
+
+export type AllowListNFT = {
+    chainId: string;
+    tokenType: 'ERC721' | 'ERC1155';
+    contractAddress: string;
+    tokenId?: string;
+    availableUsageCount: number;
+};
+
+export type AllowListValue = AllowListNFT | AllowListENS;
 
 export type Event = {
     id: string;

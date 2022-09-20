@@ -8,6 +8,12 @@ import {
     create as createEvent,
 } from '~/controllers/events';
 
+import {
+    list as getTickets,
+    get as getTicket,
+    issue as issueTicket,
+} from '~/controllers/tickets';
+
 const router: express.Router = express.Router();
 
 /**
@@ -30,5 +36,12 @@ router.get('/events', accessTokenAuth, getEvents);
 router.post('/events', accessTokenAuth, createEvent);
 router.get('/event/:eventId', getEvent);
 router.put('/event/:eventId', accessTokenAuth, updateEvent);
+
+/**
+ * Tickets
+ */
+router.get('/tickets', accessTokenAuth, getTickets);
+router.get('/tickets/:ticketId', accessTokenAuth, getTicket);
+router.post('/tickets', ethAuth, issueTicket);
 
 export default router;

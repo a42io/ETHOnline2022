@@ -70,16 +70,18 @@ export const getTicketingLog = async (
 
 export const createTicketingLog = async (
     eventId: string,
-    log: Omit<TicketingLog, 'id'>
+    log: Omit<TicketingLog, 'id' | 'createdAt' | 'updatedAt'>
 ): Promise<TicketingLog | null> => {
     try {
         const ref = getLogPath(eventId);
         const id = ref.doc().id;
-        log.createdAt = admin.firestore.FieldValue.serverTimestamp();
-        log.updatedAt = admin.firestore.FieldValue.serverTimestamp();
-        const data = toDB(log);
+        const data = toDB({
+            ...log,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
         await ref.doc(id).set(data, { merge: true });
-        return { id, ...log };
+        return { id, ...log } as TicketingLog;
     } catch (e) {
         console.warn(e);
         return null;

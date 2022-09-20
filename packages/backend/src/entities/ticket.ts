@@ -1,27 +1,31 @@
 import { firestore } from 'firebase-admin';
 import DocumentSnapshot = firestore.DocumentSnapshot;
 
-type ENSTicket = {
+export type ENSTicket = {
     id: string;
-    eventId: string;
-    nonce: string;
-    ens: string;
+    account: string;
+    eventId: string; // signed message param
+    nonce: string; // signed message param
+    ens: string; // signed message param
+    signature: string;
     invalidated: boolean;
     createdAt: Date | firestore.FieldValue;
     verifiedAt?: Date | firestore.FieldValue;
     invalidatedAt?: Date | firestore.FieldValue;
 };
 
-type NFTTicket = {
+export type NFTTicket = {
     id: string;
-    eventId: string;
-    nonce: string;
+    account: string;
+    eventId: string; // signed message param
+    nonce: string; // signed message param
     nft: {
-        chainId: string;
-        tokenType: string;
-        contractAddress: string;
-        tokenId?: string;
+        chainId: string; // signed message param
+        tokenType: string; // signed message param
+        contractAddress: string; // signed message param
+        tokenId?: string; // signed message param
     };
+    signature: string;
     invalidated: boolean;
     createdAt: Date | firestore.FieldValue;
     verifiedAt?: Date | firestore.FieldValue;
@@ -35,7 +39,9 @@ export function toDB(
 ): FirebaseFirestore.DocumentData {
     return {
         event_id: ticket.eventId,
+        account: ticket.account,
         nonce: ticket.nonce,
+        signature: ticket.signature,
         ens: (ticket as ENSTicket)?.ens,
         nft: (ticket as NFTTicket).nft
             ? {
@@ -57,9 +63,11 @@ export function fromDB(snapshot: DocumentSnapshot): Ticket {
 
     return {
         id: snapshot.id,
+        account: snapshot.get('account'),
         eventId: snapshot.get('event_id'),
         nonce: snapshot.get('nonce'),
         ens: snapshot.get('ens'),
+        signature: snapshot.get('signature'),
         nft: nft
             ? {
                   chainId: nft.chain_id,
