@@ -2,11 +2,25 @@ import * as admin from 'firebase-admin';
 import { firestore } from 'firebase-admin';
 import { EventTokenStatus, fromDB, toDB } from '~/entities/eventTokenStatus';
 import CollectionReference = firestore.CollectionReference;
+import { NFT, TokenType } from '~/entities/nft';
 
 const db = admin.firestore();
 
 function getStatusPath(eventId: string): CollectionReference {
     return db.collection('events').doc(eventId).collection('token_status');
+}
+
+export function generateStatusId(ens?: string, nft?: Partial<NFT>) {
+    if (ens) {
+        return `${ens}`;
+    }
+    if (nft) {
+        if (nft.tokenId)
+            return `${nft.chainId}-${nft.contractAddress}-${nft.tokenId}`;
+
+        return `${nft.chainId}-${nft.contractAddress}`;
+    }
+    return '';
 }
 
 export const getTokenStatus = async (
@@ -24,7 +38,8 @@ export const getTokenStatus = async (
 };
 
 export const createTokenStatus = async (
-    eventId: string
+    eventId: string,
+    tokenType: TokenType
 ): Promise<EventTokenStatus | null> => {
     try {
         const ref = getStatusPath(eventId);
@@ -32,6 +47,7 @@ export const createTokenStatus = async (
 
         const status: Omit<EventTokenStatus, 'id'> = {
             totalUsageCount: 1,
+            tokenType,
             createdAt: firestore.FieldValue.serverTimestamp(),
             updatedAt: firestore.FieldValue.serverTimestamp(),
         };
@@ -45,12 +61,13 @@ export const createTokenStatus = async (
 
 export const incrementUsageCount = async (
     eventId: string,
-    id: string
+    id: string,
+    tokenType: TokenType
 ): Promise<EventTokenStatus | null> => {
     try {
         const snapshot = await getStatusPath(eventId).doc(id).get();
         if (!snapshot.exists) {
-            return await createTokenStatus(eventId);
+            return await createTokenStatus(eventId, tokenType);
         }
 
         await snapshot.ref.set({

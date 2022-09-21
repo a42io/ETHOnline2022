@@ -1,6 +1,7 @@
 import { firestore } from 'firebase-admin';
 import DocumentData = firestore.DocumentData;
 import DocumentSnapshot = firestore.DocumentSnapshot;
+import { NFTTokenType } from '~/entities/nft';
 
 export type TicketingLog = {
     id: string;
@@ -9,7 +10,7 @@ export type TicketingLog = {
     ens?: string;
     nft?: {
         chainId: string;
-        tokenType: string;
+        tokenType: NFTTokenType;
         contractAddress: string;
         tokenId?: string;
     };
@@ -48,7 +49,7 @@ export function fromDB(snapshot: DocumentSnapshot): TicketingLog {
         nft: nft
             ? {
                   chainId: nft.chain_id,
-                  tokenType: nft.token_type,
+                  tokenType: nft.token_type as NFTTokenType,
                   contractAddress: nft.contract_address,
                   tokenId: nft.token_id,
               }

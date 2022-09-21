@@ -1,6 +1,7 @@
 import { firestore } from 'firebase-admin';
 import DocumentData = firestore.DocumentData;
 import DocumentSnapshot = firestore.DocumentSnapshot;
+import { NFTTokenType } from '~/entities/nft';
 
 export type AdminRole = 'admin' | 'operator';
 
@@ -12,7 +13,7 @@ export type AllowListENS = {
 
 export type AllowListNFT = {
     chainId: string;
-    tokenType: 'ERC721' | 'ERC1155';
+    tokenType: NFTTokenType;
     contractAddress: string;
     tokenId?: string;
     availableUsageCount: number;

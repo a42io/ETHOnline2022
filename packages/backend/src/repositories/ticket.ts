@@ -85,11 +85,11 @@ export const getAccountTicket = async (
 };
 
 export const createTicket = async (
-    eventId: string,
+    account: string,
     ticket: Omit<Ticket, 'id' | 'createdAt'>
 ): Promise<Ticket | null> => {
     try {
-        const ref = getAccountTicketsPath(eventId);
+        const ref = getAccountTicketsPath(account);
         const id = ref.doc().id;
         const data = toDB({
             ...ticket,
@@ -108,8 +108,27 @@ export const createTicket = async (
     }
 };
 
+export const setVerifiedTicket = async (
+    account: string,
+    ticketId: string
+): Promise<void | null> => {
+    try {
+        const update = {
+            verified_at: firestore.FieldValue.serverTimestamp(),
+        };
+        // ticket/{id}
+        await ticketRef.doc(ticketId).set(update, { merge: true });
+        const ref = getAccountTicketsPath(account);
+        // accounts/{accountId}/tickets/{id}
+        await ref.doc(ticketId).set(update, { merge: true });
+    } catch (e) {
+        console.warn(e);
+        return null;
+    }
+};
+
 export const invalidateTicket = async (
-    eventId: string,
+    account: string,
     currentTicketId: string,
     ticket: Omit<Ticket, 'id'>
 ): Promise<Ticket | null> => {
@@ -120,10 +139,10 @@ export const invalidateTicket = async (
         };
         // ticket/{id}
         await ticketRef.doc(currentTicketId).set(update, { merge: true });
-        const ref = getAccountTicketsPath(eventId);
+        const ref = getAccountTicketsPath(account);
         // accounts/{accountId}/tickets/{id}
         await ref.doc(currentTicketId).set(update, { merge: true });
-        return await createTicket(eventId, ticket);
+        return await createTicket(account, ticket);
     } catch (e) {
         console.warn(e);
         return null;

@@ -11,8 +11,11 @@ import { getAlchemyApiClient } from '~/libs/alchemyApiClient';
 export function isAllowListIncluded(
     ensOrNFT: AllowListValue | Omit<AllowListValue, 'availableUsageCount'>,
     allowlistNFT: Array<AllowListValue>
-): boolean {
-    return allowlistNFT.some((val) => {
+): {
+    isIncluded: boolean;
+    allowListValue?: AllowListValue;
+} {
+    const val = allowlistNFT.find((val) => {
         if (val.tokenType === 'ENS' && ensOrNFT.tokenType === 'ENS') {
             const match = wcmatch((val as AllowListENS).ens, {
                 separator: '.',
@@ -35,6 +38,11 @@ export function isAllowListIncluded(
             );
         }
     });
+
+    return {
+        isIncluded: !!val,
+        allowListValue: val,
+    };
 }
 
 export async function isOwner(

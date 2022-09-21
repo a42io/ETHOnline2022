@@ -70,16 +70,18 @@ export const getVerificationLog = async (
 
 export const createVerificationLog = async (
     eventId: string,
-    log: Omit<VerificationLog, 'id'>
+    log: Omit<VerificationLog, 'id' | 'createdAt' | 'updatedAt'>
 ): Promise<VerificationLog | null> => {
     try {
         const ref = getLogPath(eventId);
         const id = ref.doc().id;
-        log.createdAt = admin.firestore.FieldValue.serverTimestamp();
-        log.updatedAt = admin.firestore.FieldValue.serverTimestamp();
-        const data = toDB(log);
+        const data = toDB({
+            ...log,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
         await ref.doc(id).set(data, { merge: true });
-        return { id, ...log };
+        return { id, ...log } as VerificationLog;
     } catch (e) {
         console.warn(e);
         return null;

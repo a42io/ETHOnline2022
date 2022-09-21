@@ -1,6 +1,7 @@
 import { firestore } from 'firebase-admin';
 import DocumentData = firestore.DocumentData;
 import DocumentSnapshot = firestore.DocumentSnapshot;
+import { NFTTokenType } from '~/entities/nft';
 
 export type VerificationLog = {
     id: string;
@@ -9,7 +10,7 @@ export type VerificationLog = {
     ens?: string;
     nft?: {
         chainId: string;
-        tokenType: string;
+        tokenType: NFTTokenType;
         contractAddress: string;
         tokenId?: string;
     };
