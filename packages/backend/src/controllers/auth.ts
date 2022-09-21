@@ -4,11 +4,13 @@ import * as admin from 'firebase-admin';
 import { signJwt } from '~/libs/jwt';
 import { generateNonce } from '~/libs/nonce';
 import { getAccount, setAccount } from '~/repositories/account';
+import { badRequestException, unknownException } from '~/middlewares/ErrorHandler';
+import { AUTH_API_ERRORS } from '~/entities/error';
 
 export const nonce: express.RequestHandler = async (req, res, next) => {
     const a = req.query.a as string;
     if (!a || !utils.isAddress(a)) {
-        return next(''); //todo
+        return next(badRequestException(AUTH_API_ERRORS.INVALID_QUERY_PARAMS)); //todo
     }
 
     const address = utils.getAddress(a);
@@ -30,7 +32,7 @@ export const nonce: express.RequestHandler = async (req, res, next) => {
 
         return res.json({ nonce });
     } catch (e) {
-        return next(''); //todo
+        return next(unknownException(AUTH_API_ERRORS.AUTH_UNKNOWN_ERROR, e as Error));
     }
 };
 
@@ -42,6 +44,6 @@ export const signin: express.RequestHandler = async (_req, res, next) => {
         const accessToken = signJwt(exp as string, user.id, data);
         return res.json({ accessToken });
     } catch (e) {
-        return next('');
+        return next(unknownException(AUTH_API_ERRORS.AUTH_UNKNOWN_ERROR, e as Error));
     }
 };

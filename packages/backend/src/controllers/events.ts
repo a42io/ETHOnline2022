@@ -1,8 +1,9 @@
 import express from 'express';
 import { Interval, DateTime } from 'luxon';
 import {
+    badRequestException,
     notFoundException,
-    unknownException,
+    unknownException
 } from '~/middlewares/ErrorHandler';
 import { EVENT_API_ERRORS, UNKNOWN_ERROR } from '~/entities/error';
 import {
@@ -18,7 +19,7 @@ import { mainnetProvider } from '~/libs/web3providers';
 export const list: express.RequestHandler = async (req, res, next) => {
     const account = req.context.account;
     try {
-        const cursor = req.query.cursor || undefined;
+        const cursor = req.query.cursor;
 
         const l = Number(req.query.limit);
         const limit: number = !isNaN(l) ? l : 10;
@@ -81,7 +82,7 @@ export const list: express.RequestHandler = async (req, res, next) => {
 
         return res.json(result);
     } catch (e) {
-        return next(unknownException(UNKNOWN_ERROR, e as Error));
+        return next(unknownException(EVENT_API_ERRORS.EVENT_UNKNOWN_ERROR, e as Error));
     }
 };
 
@@ -118,19 +119,19 @@ export const create: express.RequestHandler = async (req, res, next) => {
         const record = await createEvent(event);
         return res.json(record);
     } catch (e) {
-        return next(unknownException(UNKNOWN_ERROR, e as Error));
+        return next(unknownException(EVENT_API_ERRORS.EVENT_UNKNOWN_ERROR, e as Error));
     }
 };
 
-//todo a lot of validations
 export const update: express.RequestHandler = async (req, res, next) => {
     const account = req.context.account;
     const eventId = req.params.eventId;
     const event: Event = req.body;
 
     if (eventId !== event.id) {
-        return next('');
+        return next(badRequestException(EVENT_API_ERRORS.INVALID_QUERY_PARAMS));
     }
+
     try {
         const ensName = await mainnetProvider.lookupAddress(account.id);
         if (
@@ -140,8 +141,7 @@ export const update: express.RequestHandler = async (req, res, next) => {
                 (r) => r.address === account.id && r.role === 'admin'
             )
         ) {
-            // todo
-            return next(EVENT_API_ERRORS.INVALID_ACCESS_TOKEN);
+            return next(badRequestException(EVENT_API_ERRORS.UNAUTHORIZED_ACCOUNT));
         }
 
         // todo キャンセルだったり重要な情報はイベント x 拾前から変更不可にする
@@ -150,14 +150,13 @@ export const update: express.RequestHandler = async (req, res, next) => {
             event.endAt as Date
         ).contains(DateTime.now());
 
+        // 開催中の変更は不可能
         if (isBetween) {
-            // todo
-            return next(EVENT_API_ERRORS.INVALID_ACCESS_TOKEN);
+            return next(badRequestException(EVENT_API_ERRORS.UPDATE_FORBIDDEN));
         }
-
         await setEvent(event);
         return res.json({ message: 'ok' });
     } catch (e) {
-        return next(unknownException(UNKNOWN_ERROR, e as Error));
+        return next(unknownException(EVENT_API_ERRORS.EVENT_UNKNOWN_ERROR, e as Error));
     }
 };
