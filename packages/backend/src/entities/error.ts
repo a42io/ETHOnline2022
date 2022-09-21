@@ -47,7 +47,7 @@ export const AUTH_API_ERRORS = {
         code: '0x0201',
         description: 'Invalid Query Params',
     },
-}
+};
 
 export const EVENT_API_ERRORS = {
     EVENT_UNKNOWN_ERROR: {
@@ -69,6 +69,26 @@ export const EVENT_API_ERRORS = {
     UPDATE_FORBIDDEN: {
         code: '0x0304',
         description: 'Update Event Forbidden',
+    },
+    INVALID_MANAGERS: {
+        code: '0x0305',
+        description: 'Invalid Manager',
+    },
+    INVALID_DATE: {
+        code: '0x0306',
+        description: 'Invalid Date',
+    },
+    EMPTY_ALLOW_LIST: {
+        code: '0x0307',
+        description: 'Empty Allow List',
+    },
+    INVALID_ALLOW_LIST: {
+        code: '0x0308',
+        description: 'Invalid Allow List',
+    },
+    INVALID_TIMEZONE: {
+        code: '0x0309',
+        description: 'Invalid Timezone',
     },
 };
 
@@ -157,4 +177,4 @@ export const TICKET_API_ERRORS = {
         code: '0x0417',
         description: 'Exceeded Maximum Use Count',
     },
-}
+};

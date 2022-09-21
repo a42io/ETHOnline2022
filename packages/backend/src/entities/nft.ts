@@ -8,3 +8,5 @@ export type NFT = {
 };
 
 export type TokenType = NFTTokenType & 'ENS';
+
+export const supportedChainIds = ['1', '10', '137', '42161'];

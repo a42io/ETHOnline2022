@@ -7,6 +7,7 @@ import {
 } from '~/libs/contractMock';
 import { BigNumber } from 'ethers';
 import { getAlchemyApiClient } from '~/libs/alchemyApiClient';
+import * as ethers from 'ethers';
 
 export function isAllowListIncluded(
     ensOrNFT: AllowListValue | Omit<AllowListValue, 'availableUsageCount'>,
@@ -104,5 +105,25 @@ export async function lookupAddress(
         return { ens: null, address: null };
     } catch (e) {
         return { ens: null, address: null };
+    }
+}
+
+export function isValidAddress(address: string): boolean {
+    try {
+        ethers.utils.getAddress(address);
+        return true;
+    } catch (e) {
+        console.warn(e);
+        return false;
+    }
+}
+
+export function isValidTokenId(tokenId: string): boolean {
+    try {
+        ethers.BigNumber.from(tokenId);
+        return true;
+    } catch (e) {
+        console.warn(e);
+        return false;
     }
 }

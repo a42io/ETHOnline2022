@@ -15,7 +15,10 @@ import {
 import { Condition, OrderBy } from '~/entities/query';
 import { Event } from '~/entities/event';
 import { mainnetProvider } from '~/libs/web3providers';
-import { isBetween } from '~/libs/dateUti';
+import { isBetween, isFuture, isValidTimeZone } from '~/libs/dateUti';
+import { ethers } from 'ethers';
+import { supportedChainIds } from '~/entities/nft';
+import { isValidAddress, isValidTokenId } from '~/libs/nft';
 
 export const list: express.RequestHandler = async (req, res, next) => {
     const account = req.context.account;
@@ -106,7 +109,49 @@ export const get: express.RequestHandler = async (req, res, next) => {
 export const create: express.RequestHandler = async (req, res, next) => {
     const account = req.context.account;
     try {
-        const event: Event = req.body;
+        const event: Partial<Event> = req.body;
+
+        if (
+            event.managers &&
+            event.managers.some(
+                (r) => ethers.utils.getAddress(r.address) === account.id
+            )
+        ) {
+            return next(badRequestException(EVENT_API_ERRORS.INVALID_MANAGERS));
+        }
+
+        if (!isFuture(event.startAt as Date)) {
+            return next(badRequestException(EVENT_API_ERRORS.INVALID_DATE));
+        }
+        if (!isFuture(event.endAt as Date, event.startAt as Date)) {
+            return next(badRequestException(EVENT_API_ERRORS.INVALID_DATE));
+        }
+
+        if (!event.allowList || event.allowList.length === 0) {
+            return next(badRequestException(EVENT_API_ERRORS.EMPTY_ALLOW_LIST));
+        }
+
+        const isValidAllowList = event.allowList.every((r) => {
+            if (r.availableUsageCount <= 0) return false;
+            if (r.tokenType === 'ENS' && !r.ens.endsWith('.eth')) return false;
+            if (r.tokenType === 'ERC1155' || r.tokenType === 'ERC721') {
+                if (!supportedChainIds.includes(r.chainId)) return false;
+                if (!isValidAddress(r.contractAddress)) return false;
+                if (r.tokenId && !isValidTokenId(r.tokenId)) return false;
+                return true;
+            }
+            return false;
+        });
+
+        if (!isValidAllowList) {
+            return next(
+                badRequestException(EVENT_API_ERRORS.INVALID_ALLOW_LIST)
+            );
+        }
+
+        if (!event.timezone || isValidTimeZone(event.timezone)) {
+            return next(badRequestException(EVENT_API_ERRORS.INVALID_TIMEZONE));
+        }
 
         // host setting
         const ensName = await mainnetProvider.lookupAddress(account.id);
@@ -119,8 +164,22 @@ export const create: express.RequestHandler = async (req, res, next) => {
             avatarUrl: avatar?.url || '',
         };
 
-        const record = await createEvent(event);
-        return res.json(record);
+        const record: Omit<Event, 'id' | 'createdAt' | 'updatedAt'> = {
+            title: event.title || '',
+            body: event.body || '',
+            cover: event.cover || '',
+            description: event.description || '',
+            allowList: event.allowList,
+            startAt: event.startAt as Date,
+            endAt: event.endAt as Date,
+            host: event.host,
+            isCanceled: false,
+            managers: event.managers || [],
+            timezone: event.timezone,
+        };
+
+        const result = await createEvent(record);
+        return res.json(result);
     } catch (e) {
         return next(
             unknownException(EVENT_API_ERRORS.EVENT_UNKNOWN_ERROR, e as Error)
@@ -162,7 +221,68 @@ export const update: express.RequestHandler = async (req, res, next) => {
         ) {
             return next(badRequestException(EVENT_API_ERRORS.UPDATE_FORBIDDEN));
         }
-        await setEvent(event);
+
+        if (
+            event.managers &&
+            event.managers.some(
+                (r) => ethers.utils.getAddress(r.address) === account.id
+            )
+        ) {
+            return next(badRequestException(EVENT_API_ERRORS.INVALID_MANAGERS));
+        }
+
+        if (!isFuture(event.startAt as Date)) {
+            return next(badRequestException(EVENT_API_ERRORS.INVALID_DATE));
+        }
+        if (!isFuture(event.endAt as Date, event.startAt as Date)) {
+            return next(badRequestException(EVENT_API_ERRORS.INVALID_DATE));
+        }
+
+        if (!event.allowList || event.allowList.length === 0) {
+            return next(badRequestException(EVENT_API_ERRORS.EMPTY_ALLOW_LIST));
+        }
+
+        const isValidAllowList = event.allowList.every((r) => {
+            if (r.availableUsageCount <= 0) return false;
+            if (r.tokenType === 'ENS' && !r.ens.endsWith('.eth')) return false;
+            if (r.tokenType === 'ERC1155' || r.tokenType === 'ERC721') {
+                if (!supportedChainIds.includes(r.chainId)) return false;
+                if (!isValidAddress(r.contractAddress)) return false;
+                if (r.tokenId && !isValidTokenId(r.tokenId)) return false;
+                return true;
+            }
+            return false;
+        });
+
+        if (!isValidAllowList) {
+            return next(
+                badRequestException(EVENT_API_ERRORS.INVALID_ALLOW_LIST)
+            );
+        }
+
+        if (!event.timezone || isValidTimeZone(event.timezone)) {
+            return next(badRequestException(EVENT_API_ERRORS.INVALID_TIMEZONE));
+        }
+
+        const record: Event = {
+            id: event.id,
+            title: event.title || '',
+            body: event.body || '',
+            cover: event.cover || '',
+            description: event.description || '',
+            allowList: event.allowList,
+            startAt: event.startAt as Date,
+            endAt: event.endAt as Date,
+            host: event.host,
+            isCanceled: event.isCanceled,
+            managers: event.managers || [],
+            timezone: event.timezone,
+            createdAt: event.createdAt,
+            updatedAt: event.updatedAt,
+            canceledAt: event.canceledAt,
+        };
+
+        await setEvent(record);
         return res.json({ message: 'ok' });
     } catch (e) {
         return next(

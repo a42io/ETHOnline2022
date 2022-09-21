@@ -145,13 +145,17 @@ export const getEvent = async (id: string): Promise<Event | null> => {
     return fromDB(snapshot);
 };
 
-export const createEvent = async (event: Omit<Event, 'id'>): Promise<Event> => {
+export const createEvent = async (
+    event: Omit<Event, 'id' | 'createdAt' | 'updatedAt'>
+): Promise<Event> => {
     const id = eventRef.doc().id;
-    event.createdAt = admin.firestore.FieldValue.serverTimestamp();
-    event.updatedAt = admin.firestore.FieldValue.serverTimestamp();
-    const data = toDB(event);
+    const data = toDB({
+        ...event,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
     await eventRef.doc(id).set(data, { merge: true });
-    return { id, ...event };
+    return { id, ...event } as Event;
 };
 
 export const setEvent = async (event: Event): Promise<Event> => {
