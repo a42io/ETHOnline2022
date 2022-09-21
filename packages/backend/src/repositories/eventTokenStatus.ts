@@ -76,7 +76,7 @@ export const incrementUsageCount = async (
     eventId: string,
     id: string,
     tokenType: TokenType
-): Promise<EventTokenStatus | null> => {
+): Promise<EventTokenStatus> => {
     const snapshot = await getStatusPath(eventId).doc(id).get();
     if (!snapshot.exists) {
         return await createTokenStatus(eventId, tokenType);

@@ -223,7 +223,7 @@ export const issue: express.RequestHandler = async (req, res, next) => {
             account: account.id,
             ens: (ticket as ENSTicket)?.ens,
             nft: (ticket as NFTTicket)?.nft,
-            ticketId: ticket!.id,
+            ticketId: ticket.id,
         });
 
         return res.json(ticket);
@@ -433,7 +433,7 @@ export const verify: express.RequestHandler = async (req, res, next) => {
             ticketId,
             ens: (ticket as ENSTicket)?.ens,
             nft: (ticket as NFTTicket)?.nft,
-            totalUsageCount: tokenStatus!.totalUsageCount,
+            totalUsageCount: tokenStatus.totalUsageCount,
         });
 
         return res.json(ticket);
@@ -545,7 +545,7 @@ export const invalidate: express.RequestHandler = async (req, res, next) => {
             account: account.id,
             ens: (ticket as ENSTicket)?.ens,
             nft: (ticket as NFTTicket)?.nft,
-            ticketId: ticket!.id,
+            ticketId: ticket.id,
         });
 
         return res.json(ticket);
