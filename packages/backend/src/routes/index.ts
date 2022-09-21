@@ -12,6 +12,8 @@ import {
     list as getTickets,
     get as getTicket,
     issue as issueTicket,
+    verify as verifyTicket,
+    invalidate as invalidateTicket,
 } from '~/controllers/tickets';
 
 const router: express.Router = express.Router();
@@ -41,7 +43,13 @@ router.put('/event/:eventId', accessTokenAuth, updateEvent);
  * Tickets
  */
 router.get('/tickets', accessTokenAuth, getTickets);
-router.get('/tickets/:ticketId', accessTokenAuth, getTicket);
+router.get('/tickets/:ticketId', getTicket);
 router.post('/tickets', ethAuth, issueTicket);
+router.post('/tickets/:ticketId', ethAuth, invalidateTicket);
+
+/**
+ * Verification
+ */
+router.post('/verify', accessTokenAuth, verifyTicket);
 
 export default router;

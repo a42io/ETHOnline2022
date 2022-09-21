@@ -5,13 +5,15 @@ import {
     unknownException,
 } from '~/middlewares/ErrorHandler';
 
-import { UNKNOWN_ERROR } from '~/entities/error';
+import { EVENT_API_ERRORS, UNKNOWN_ERROR } from '~/entities/error';
 import { Condition, OrderBy } from '~/entities/query';
 import {
     getTicket,
     getAccountTickets,
     createTicket,
     setVerifiedTicket,
+    getAccountTicket,
+    invalidateTicket,
 } from '~/repositories/ticket';
 import { getEvent } from '~/repositories/event';
 import { isAllowListIncluded, isOwner, lookupAddress } from '~/libs/nft';
@@ -26,6 +28,7 @@ import { TokenType } from '~/entities/nft';
 import { createVerificationLog } from '~/repositories/verificationLog';
 import { isToday } from '~/libs/dateUti';
 import { AllowListENS, AllowListNFT } from '~/entities/event';
+import { mainnetProvider } from '~/libs/web3providers';
 
 function isValidMessage(message: {
     eventId?: string;
@@ -111,6 +114,7 @@ export const get: express.RequestHandler = async (req, res, next) => {
 
 export const issue: express.RequestHandler = async (req, res, next) => {
     const { message, signature } = req.body;
+    const { eventId, nft, ens, nonce } = message;
     if (!signature) {
         // todo
         return res.status(400).json({ message: 'INVALID_PARAMS' });
@@ -122,7 +126,7 @@ export const issue: express.RequestHandler = async (req, res, next) => {
 
     const account = req.context.account;
     try {
-        const event = await getEvent(message.eventId);
+        const event = await getEvent(eventId);
         if (!event) {
             // todo
             return next(notFoundException(UNKNOWN_ERROR));
@@ -146,35 +150,32 @@ export const issue: express.RequestHandler = async (req, res, next) => {
             return next(notFoundException(UNKNOWN_ERROR));
         }
 
-        if (message.nft) {
-            const { isIncluded } = isAllowListIncluded(
-                message.nft,
-                event.allowList
-            );
+        if (nft) {
+            const { isIncluded } = isAllowListIncluded(nft, event.allowList);
             if (!isIncluded) {
                 // todo
                 return res.status(400).json({ message: 'INVALID_NFT' });
             }
             const isTokenOwner = await isOwner(
                 account.id,
-                message.nft.chainId,
-                message.nft.contractAddress,
-                message.nft.tokenId
+                nft.chainId,
+                nft.contractAddress,
+                nft.tokenId
             );
             if (!isTokenOwner) {
                 // todo
                 return res.status(400).json({ message: 'NOT_TOKEN_OWNER' });
             }
-        } else if (message.ens) {
+        } else if (ens) {
             const { isIncluded } = isAllowListIncluded(
-                { tokenType: 'ENS', ens: message.ens },
+                { tokenType: 'ENS', ens },
                 event.allowList
             );
             if (!isIncluded) {
                 // todo
                 return res.status(400).json({ message: 'INVALID_ENS' });
             }
-            const addressInfo = await lookupAddress(message.ens);
+            const addressInfo = await lookupAddress(ens);
             if (addressInfo.address !== account.id) {
                 // todo
                 return res.status(400).json({ message: 'NOT_ENS_OWNER' });
@@ -183,22 +184,22 @@ export const issue: express.RequestHandler = async (req, res, next) => {
 
         // ticket 生成
         let ticket;
-        if (message.ens) {
+        if (ens) {
             ticket = await createTicket(event.id, {
-                nonce: message.nonce,
+                nonce,
                 account: account.id,
                 eventId: event.id,
                 invalidated: false,
-                ens: message.ens as string,
+                ens: ens as string,
                 signature,
             } as ENSTicket);
         } else {
             ticket = await createTicket(event.id, {
-                nonce: message.nonce,
+                nonce,
                 account: account.id,
                 eventId: event.id,
                 invalidated: false,
-                nft: message.nft,
+                nft,
                 signature,
             } as NFTTicket);
         }
@@ -218,11 +219,19 @@ export const issue: express.RequestHandler = async (req, res, next) => {
 };
 
 export const verify: express.RequestHandler = async (req, res, next) => {
-    const { eventId, ticketId, nft, ens, nonce, signature } = req.body;
-    const account = req.context.account;
+    const { message, signature, ticketId } = req.body;
+    const { eventId, nft, ens, nonce } = message;
+
+    const manager = req.context.account;
+
     if (!signature) {
         // todo
         return res.status(400).json({ message: 'INVALID_PARAMS' });
+    }
+
+    if (!isValidMessage(message)) {
+        // todo
+        return res.status(400).json({ message: 'INVALID_JSON' });
     }
 
     try {
@@ -230,6 +239,17 @@ export const verify: express.RequestHandler = async (req, res, next) => {
         if (!event) {
             // todo
             return next(notFoundException(UNKNOWN_ERROR));
+        }
+
+        // 自分がもぎりできるイベントか
+        const ensName = await mainnetProvider.lookupAddress(manager.id);
+        if (
+            event.host.addressOrEns !== ensName &&
+            event.host.addressOrEns !== manager.id &&
+            !event.managers.some((r) => r.address === manager.id)
+        ) {
+            // todo
+            return next(EVENT_API_ERRORS.INVALID_ACCESS_TOKEN);
         }
 
         //todo 終わったイベントじゃないか
@@ -308,7 +328,7 @@ export const verify: express.RequestHandler = async (req, res, next) => {
                 return res.status(400).json({ message: 'INVALID_NFT' });
             }
             const isTokenOwner = await isOwner(
-                account.id,
+                ticket.account,
                 nft.chainId,
                 nft.contractAddress,
                 nft.tokenId
@@ -340,7 +360,7 @@ export const verify: express.RequestHandler = async (req, res, next) => {
                 return res.status(400).json({ message: 'INVALID_ENS' });
             }
             const addressInfo = await lookupAddress(ens);
-            if (addressInfo.address !== account.id) {
+            if (addressInfo.address !== ticket.account) {
                 // todo
                 return res.status(400).json({ message: 'NOT_ENS_OWNER' });
             }
@@ -369,15 +389,120 @@ export const verify: express.RequestHandler = async (req, res, next) => {
         }
 
         // ticket の verified_at を更新
-        await setVerifiedTicket(account.id, ticketId);
+        await setVerifiedTicket(ticket.account, ticketId);
 
         // verification log 生成
         await createVerificationLog(event.id, {
-            account: account.id,
+            account: ticket.account,
             ticketId,
             ens: (ticket as ENSTicket)?.ens,
             nft: (ticket as NFTTicket)?.nft,
             totalUsageCount: tokenStatus!.totalUsageCount,
+        });
+
+        return res.json(ticket);
+    } catch (e) {
+        return next(unknownException(UNKNOWN_ERROR, e as Error));
+    }
+};
+
+export const invalidate: express.RequestHandler = async (req, res, next) => {
+    const { message, signature, currentTicketId } = req.body;
+    const { eventId, nft, ens, nonce } = message;
+
+    if (!signature) {
+        // todo
+        return res.status(400).json({ message: 'INVALID_PARAMS' });
+    }
+    if (!isValidMessage(message)) {
+        // todo
+        return res.status(400).json({ message: 'INVALID_JSON' });
+    }
+
+    const account = req.context.account;
+
+    try {
+        const event = await getEvent(eventId);
+        if (!event) {
+            // todo
+            return next(notFoundException(UNKNOWN_ERROR));
+        }
+
+        //todo 終わったイベントじゃないか
+        if (DateTime.fromJSDate(event.endAt as Date) < DateTime.now()) {
+            // todo
+            return next(notFoundException(UNKNOWN_ERROR));
+        }
+        //todo 指定されたチケット存在しない、もしくは invalidated 済みじゃないか
+        const currentTicket = await getAccountTicket(
+            account.id,
+            currentTicketId
+        );
+        if (!currentTicket || currentTicket.invalidated) {
+            // todo
+            return next(notFoundException(UNKNOWN_ERROR));
+        }
+
+        if (nft) {
+            const { isIncluded } = isAllowListIncluded(nft, event.allowList);
+            if (!isIncluded) {
+                // todo
+                return res.status(400).json({ message: 'INVALID_NFT' });
+            }
+            const isTokenOwner = await isOwner(
+                account.id,
+                nft.chainId,
+                nft.contractAddress,
+                nft.tokenId
+            );
+            if (!isTokenOwner) {
+                // todo
+                return res.status(400).json({ message: 'NOT_TOKEN_OWNER' });
+            }
+        } else if (ens) {
+            const { isIncluded } = isAllowListIncluded(
+                { tokenType: 'ENS', ens },
+                event.allowList
+            );
+            if (!isIncluded) {
+                // todo
+                return res.status(400).json({ message: 'INVALID_ENS' });
+            }
+            const addressInfo = await lookupAddress(ens);
+            if (addressInfo.address !== account.id) {
+                // todo
+                return res.status(400).json({ message: 'NOT_ENS_OWNER' });
+            }
+        }
+
+        // ticket 生成
+        let ticket;
+        if (ens) {
+            ticket = await invalidateTicket(account.id, event.id, {
+                nonce,
+                account: account.id,
+                eventId: event.id,
+                invalidated: false,
+                ens,
+                signature,
+            } as ENSTicket);
+        } else {
+            ticket = await invalidateTicket(account.id, event.id, {
+                nonce,
+                account: account.id,
+                eventId: event.id,
+                invalidated: false,
+                nft,
+                signature,
+            } as NFTTicket);
+        }
+
+        // ticketing log 生成
+        await createTicketingLog(event.id, {
+            account: account.id,
+            ens: (ticket as ENSTicket)?.ens,
+            nft: (ticket as NFTTicket)?.nft,
+            ticketId: ticket!.id,
         });
 
         return res.json(ticket);
