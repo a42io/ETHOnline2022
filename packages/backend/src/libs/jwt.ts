@@ -1,9 +1,4 @@
 import jwt, { Algorithm, Secret } from 'jsonwebtoken';
-import dotenv from 'dotenv';
-
-if (process.env.NODE_ENV === 'development') {
-    dotenv.config();
-}
 
 const secret = process.env.JWT_SECRET;
 const algorithm = process.env.JWT_ALGORITHM;

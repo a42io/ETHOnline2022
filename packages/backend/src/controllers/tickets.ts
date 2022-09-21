@@ -3,7 +3,7 @@ import { DateTime } from 'luxon';
 import {
     badRequestException,
     notFoundException,
-    unknownException
+    unknownException,
 } from '~/middlewares/ErrorHandler';
 
 import { TICKET_API_ERRORS } from '~/entities/error';
@@ -92,7 +92,9 @@ export const list: express.RequestHandler = async (req, res, next) => {
 
         return res.json({ tickets });
     } catch (e) {
-        return next(unknownException(TICKET_API_ERRORS.TICKET_UNKNOWN_ERROR, e as Error));
+        return next(
+            unknownException(TICKET_API_ERRORS.TICKET_UNKNOWN_ERROR, e as Error)
+        );
     }
 };
 
@@ -107,7 +109,9 @@ export const get: express.RequestHandler = async (req, res, next) => {
             ticket,
         });
     } catch (e) {
-        return next(unknownException(TICKET_API_ERRORS.TICKET_UNKNOWN_ERROR, e as Error));
+        return next(
+            unknownException(TICKET_API_ERRORS.TICKET_UNKNOWN_ERROR, e as Error)
+        );
     }
 };
 
@@ -115,10 +119,12 @@ export const issue: express.RequestHandler = async (req, res, next) => {
     const { message, signature } = req.body;
     const { eventId, nft, ens, nonce } = message;
     if (!signature) {
-       return next(badRequestException(TICKET_API_ERRORS.INVALID_BODY))
+        return next(badRequestException(TICKET_API_ERRORS.INVALID_BODY));
     }
     if (!isValidMessage(message)) {
-        return next(badRequestException(TICKET_API_ERRORS.INVALID_MESSAGE_JSON))
+        return next(
+            badRequestException(TICKET_API_ERRORS.INVALID_MESSAGE_JSON)
+        );
     }
 
     const account = req.context.account;
@@ -131,7 +137,9 @@ export const issue: express.RequestHandler = async (req, res, next) => {
 
         // check if event is not ended
         if (DateTime.fromJSDate(event.endAt as Date) < DateTime.now()) {
-            return next(badRequestException(TICKET_API_ERRORS.EVENT_INVALID_TERM));
+            return next(
+                badRequestException(TICKET_API_ERRORS.EVENT_INVALID_TERM)
+            );
         }
 
         // check if ticket is issued and remains valid ticket
@@ -140,17 +148,21 @@ export const issue: express.RequestHandler = async (req, res, next) => {
         ]);
         if (
             accountTickets &&
-            accountTickets?.length !== 0 &&
+            accountTickets.length !== 0 &&
             accountTickets.some((r) => !r.invalidated)
         ) {
-            return next(badRequestException(TICKET_API_ERRORS.VALID_TICKET_EXITS));
+            return next(
+                badRequestException(TICKET_API_ERRORS.VALID_TICKET_EXITS)
+            );
         }
 
         if (nft) {
             // check if the account NFT is included in the allow list.
             const { isIncluded } = isAllowListIncluded(nft, event.allowList);
             if (!isIncluded) {
-                return next(badRequestException(TICKET_API_ERRORS.TOKEN_NOT_INCLUDED))
+                return next(
+                    badRequestException(TICKET_API_ERRORS.TOKEN_NOT_INCLUDED)
+                );
             }
             const isTokenOwner = await isOwner(
                 account.id,
@@ -160,7 +172,9 @@ export const issue: express.RequestHandler = async (req, res, next) => {
             );
             // check if the account has the token
             if (!isTokenOwner) {
-                return next(badRequestException(TICKET_API_ERRORS.NOT_TOKEN_OWNER))
+                return next(
+                    badRequestException(TICKET_API_ERRORS.NOT_TOKEN_OWNER)
+                );
             }
         } else if (ens) {
             const { isIncluded } = isAllowListIncluded(
@@ -169,12 +183,16 @@ export const issue: express.RequestHandler = async (req, res, next) => {
             );
             // check if the account's ens is included in the allow list
             if (!isIncluded) {
-                return next(badRequestException(TICKET_API_ERRORS.ENS_NOT_INCLUDED))
+                return next(
+                    badRequestException(TICKET_API_ERRORS.ENS_NOT_INCLUDED)
+                );
             }
             // check if the account has the ens
             const addressInfo = await lookupAddress(ens);
             if (addressInfo.address !== account.id) {
-                return next(badRequestException(TICKET_API_ERRORS.NOT_ENS_OWNER))
+                return next(
+                    badRequestException(TICKET_API_ERRORS.NOT_ENS_OWNER)
+                );
             }
         }
 
@@ -210,7 +228,9 @@ export const issue: express.RequestHandler = async (req, res, next) => {
 
         return res.json(ticket);
     } catch (e) {
-        return next(unknownException(TICKET_API_ERRORS.TICKET_UNKNOWN_ERROR, e as Error));
+        return next(
+            unknownException(TICKET_API_ERRORS.TICKET_UNKNOWN_ERROR, e as Error)
+        );
     }
 };
 
@@ -221,18 +241,20 @@ export const verify: express.RequestHandler = async (req, res, next) => {
     const manager = req.context.account;
 
     if (!signature) {
-        return next(badRequestException(TICKET_API_ERRORS.INVALID_BODY))
+        return next(badRequestException(TICKET_API_ERRORS.INVALID_BODY));
     }
 
     if (!isValidMessage(message)) {
-        return next(badRequestException(TICKET_API_ERRORS.INVALID_MESSAGE_JSON))
+        return next(
+            badRequestException(TICKET_API_ERRORS.INVALID_MESSAGE_JSON)
+        );
     }
 
     try {
         const event = await getEvent(eventId);
         // check if the event exists
         if (!event) {
-            return next(badRequestException(TICKET_API_ERRORS.EVENT_NOT_FOUND))
+            return next(badRequestException(TICKET_API_ERRORS.EVENT_NOT_FOUND));
         }
 
         // check if the account can manage the events
@@ -242,12 +264,16 @@ export const verify: express.RequestHandler = async (req, res, next) => {
             event.host.addressOrEns !== manager.id &&
             !event.managers.some((r) => r.address === manager.id)
         ) {
-            return next(badRequestException(TICKET_API_ERRORS.UNAUTHORIZED_ACCOUNT))
+            return next(
+                badRequestException(TICKET_API_ERRORS.UNAUTHORIZED_ACCOUNT)
+            );
         }
 
         // check if the event already ended
         if (DateTime.fromJSDate(event.endAt as Date) < DateTime.now()) {
-            return next(badRequestException(TICKET_API_ERRORS.EVENT_INVALID_TERM));
+            return next(
+                badRequestException(TICKET_API_ERRORS.EVENT_INVALID_TERM)
+            );
         }
 
         // check if the ticket exists
@@ -257,18 +283,24 @@ export const verify: express.RequestHandler = async (req, res, next) => {
         }
         // check if the ticket is not invalidated
         if (ticket.invalidated) {
-            return next(badRequestException(TICKET_API_ERRORS.INVALIDATED_TICKET));
+            return next(
+                badRequestException(TICKET_API_ERRORS.INVALIDATED_TICKET)
+            );
         }
         // check if the ticket is already used
         if (ticket.verifiedAt) {
             if (isToday(event.timezone, ticket.verifiedAt as Date)) {
-                return next(badRequestException(TICKET_API_ERRORS.VERIFIED_TICKET));
+                return next(
+                    badRequestException(TICKET_API_ERRORS.VERIFIED_TICKET)
+                );
             }
         }
 
         // check if the signature sent from user matches data in db.
         if (ticket.signature !== signature) {
-            return next(badRequestException(TICKET_API_ERRORS.INVALID_SIGNATURE));
+            return next(
+                badRequestException(TICKET_API_ERRORS.INVALID_SIGNATURE)
+            );
         }
 
         // check if the nonce sent from user matches data in db.
@@ -305,7 +337,9 @@ export const verify: express.RequestHandler = async (req, res, next) => {
             if (tokenType === 'ENS' || tokenType === 'ERC721') {
                 // check if the token is not used in the same day
                 if (isToday(event.timezone, tokenStatus.updatedAt as Date)) {
-                    return next(badRequestException(TICKET_API_ERRORS.USED_TOKEN));
+                    return next(
+                        badRequestException(TICKET_API_ERRORS.USED_TOKEN)
+                    );
                 }
             }
         }
@@ -316,7 +350,9 @@ export const verify: express.RequestHandler = async (req, res, next) => {
                 event.allowList
             );
             if (!isIncluded) {
-                return next(badRequestException(TICKET_API_ERRORS.TOKEN_NOT_INCLUDED))
+                return next(
+                    badRequestException(TICKET_API_ERRORS.TOKEN_NOT_INCLUDED)
+                );
             }
             const isTokenOwner = await isOwner(
                 ticket.account,
@@ -325,7 +361,9 @@ export const verify: express.RequestHandler = async (req, res, next) => {
                 nft.tokenId
             );
             if (!isTokenOwner) {
-                return next(badRequestException(TICKET_API_ERRORS.NOT_TOKEN_OWNER))
+                return next(
+                    badRequestException(TICKET_API_ERRORS.NOT_TOKEN_OWNER)
+                );
             }
             if (
                 allowListValue &&
@@ -336,7 +374,11 @@ export const verify: express.RequestHandler = async (req, res, next) => {
                     tokenStatus.totalUsageCount <=
                         allowListValue.availableUsageCount
                 ) {
-                    return next(badRequestException(TICKET_API_ERRORS.EXCEEDED_MAXIMUM_USE_COUNT))
+                    return next(
+                        badRequestException(
+                            TICKET_API_ERRORS.EXCEEDED_MAXIMUM_USE_COUNT
+                        )
+                    );
                 }
             }
         } else if (ens) {
@@ -345,11 +387,15 @@ export const verify: express.RequestHandler = async (req, res, next) => {
                 event.allowList
             );
             if (!isIncluded) {
-                return next(badRequestException(TICKET_API_ERRORS.ENS_NOT_INCLUDED))
+                return next(
+                    badRequestException(TICKET_API_ERRORS.ENS_NOT_INCLUDED)
+                );
             }
             const addressInfo = await lookupAddress(ens);
             if (addressInfo.address !== ticket.account) {
-                return next(badRequestException(TICKET_API_ERRORS.NOT_ENS_OWNER))
+                return next(
+                    badRequestException(TICKET_API_ERRORS.NOT_ENS_OWNER)
+                );
             }
             if (
                 allowListValue &&
@@ -360,7 +406,11 @@ export const verify: express.RequestHandler = async (req, res, next) => {
                     tokenStatus.totalUsageCount <=
                         allowListValue.availableUsageCount
                 ) {
-                    return next(badRequestException(TICKET_API_ERRORS.EXCEEDED_MAXIMUM_USE_COUNT))
+                    return next(
+                        badRequestException(
+                            TICKET_API_ERRORS.EXCEEDED_MAXIMUM_USE_COUNT
+                        )
+                    );
                 }
             }
         }
@@ -388,7 +438,9 @@ export const verify: express.RequestHandler = async (req, res, next) => {
 
         return res.json(ticket);
     } catch (e) {
-        return next(unknownException(TICKET_API_ERRORS.TICKET_UNKNOWN_ERROR, e as Error));
+        return next(
+            unknownException(TICKET_API_ERRORS.TICKET_UNKNOWN_ERROR, e as Error)
+        );
     }
 };
 
@@ -397,10 +449,12 @@ export const invalidate: express.RequestHandler = async (req, res, next) => {
     const { eventId, nft, ens, nonce } = message;
 
     if (!signature) {
-        return next(badRequestException(TICKET_API_ERRORS.INVALID_BODY))
+        return next(badRequestException(TICKET_API_ERRORS.INVALID_BODY));
     }
     if (!isValidMessage(message)) {
-        return next(badRequestException(TICKET_API_ERRORS.INVALID_MESSAGE_JSON))
+        return next(
+            badRequestException(TICKET_API_ERRORS.INVALID_MESSAGE_JSON)
+        );
     }
 
     const account = req.context.account;
@@ -408,11 +462,13 @@ export const invalidate: express.RequestHandler = async (req, res, next) => {
     try {
         const event = await getEvent(eventId);
         if (!event) {
-            return next(badRequestException(TICKET_API_ERRORS.EVENT_NOT_FOUND))
+            return next(badRequestException(TICKET_API_ERRORS.EVENT_NOT_FOUND));
         }
 
         if (DateTime.fromJSDate(event.endAt as Date) < DateTime.now()) {
-            return next(badRequestException(TICKET_API_ERRORS.EVENT_INVALID_TERM));
+            return next(
+                badRequestException(TICKET_API_ERRORS.EVENT_INVALID_TERM)
+            );
         }
 
         const currentTicket = await getAccountTicket(
@@ -426,7 +482,9 @@ export const invalidate: express.RequestHandler = async (req, res, next) => {
         if (nft) {
             const { isIncluded } = isAllowListIncluded(nft, event.allowList);
             if (!isIncluded) {
-                return next(badRequestException(TICKET_API_ERRORS.TOKEN_NOT_INCLUDED))
+                return next(
+                    badRequestException(TICKET_API_ERRORS.TOKEN_NOT_INCLUDED)
+                );
             }
             const isTokenOwner = await isOwner(
                 account.id,
@@ -436,7 +494,9 @@ export const invalidate: express.RequestHandler = async (req, res, next) => {
             );
             // check if the account has the token
             if (!isTokenOwner) {
-                return next(badRequestException(TICKET_API_ERRORS.NOT_TOKEN_OWNER))
+                return next(
+                    badRequestException(TICKET_API_ERRORS.NOT_TOKEN_OWNER)
+                );
             }
         } else if (ens) {
             const { isIncluded } = isAllowListIncluded(
@@ -445,12 +505,16 @@ export const invalidate: express.RequestHandler = async (req, res, next) => {
             );
             // check if the account's ens is included in the allow list
             if (!isIncluded) {
-                return next(badRequestException(TICKET_API_ERRORS.ENS_NOT_INCLUDED))
+                return next(
+                    badRequestException(TICKET_API_ERRORS.ENS_NOT_INCLUDED)
+                );
             }
             // check if the account has the ens
             const addressInfo = await lookupAddress(ens);
             if (addressInfo.address !== account.id) {
-                return next(badRequestException(TICKET_API_ERRORS.NOT_ENS_OWNER))
+                return next(
+                    badRequestException(TICKET_API_ERRORS.NOT_ENS_OWNER)
+                );
             }
         }
 
@@ -486,6 +550,8 @@ export const invalidate: express.RequestHandler = async (req, res, next) => {
 
         return res.json(ticket);
     } catch (e) {
-        return next(unknownException(TICKET_API_ERRORS.TICKET_UNKNOWN_ERROR, e as Error));
+        return next(
+            unknownException(TICKET_API_ERRORS.TICKET_UNKNOWN_ERROR, e as Error)
+        );
     }
 };

@@ -1,10 +1,11 @@
 import express from 'express';
 import { utils } from 'ethers';
-import * as admin from 'firebase-admin';
 import { signJwt } from '~/libs/jwt';
-import { generateNonce } from '~/libs/nonce';
-import { getAccount, setAccount } from '~/repositories/account';
-import { badRequestException, unknownException } from '~/middlewares/ErrorHandler';
+import { createAccount, getAccount } from '~/repositories/account';
+import {
+    badRequestException,
+    unknownException,
+} from '~/middlewares/ErrorHandler';
 import { AUTH_API_ERRORS } from '~/entities/error';
 
 export const nonce: express.RequestHandler = async (req, res, next) => {
@@ -19,20 +20,16 @@ export const nonce: express.RequestHandler = async (req, res, next) => {
 
         let nonce;
         if (!account) {
-            nonce = generateNonce();
-            await setAccount({
-                id: address,
-                nonce,
-                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-                createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            });
+            nonce = (await createAccount(address)).nonce;
         } else {
             nonce = account.nonce;
         }
 
         return res.json({ nonce });
     } catch (e) {
-        return next(unknownException(AUTH_API_ERRORS.AUTH_UNKNOWN_ERROR, e as Error));
+        return next(
+            unknownException(AUTH_API_ERRORS.AUTH_UNKNOWN_ERROR, e as Error)
+        );
     }
 };
 
@@ -44,6 +41,8 @@ export const signin: express.RequestHandler = async (_req, res, next) => {
         const accessToken = signJwt(exp as string, user.id, data);
         return res.json({ accessToken });
     } catch (e) {
-        return next(unknownException(AUTH_API_ERRORS.AUTH_UNKNOWN_ERROR, e as Error));
+        return next(
+            unknownException(AUTH_API_ERRORS.AUTH_UNKNOWN_ERROR, e as Error)
+        );
     }
 };

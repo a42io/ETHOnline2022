@@ -1,9 +1,9 @@
 import express from 'express';
-import { Interval, DateTime } from 'luxon';
+import { DateTime } from 'luxon';
 import {
     badRequestException,
     notFoundException,
-    unknownException
+    unknownException,
 } from '~/middlewares/ErrorHandler';
 import { EVENT_API_ERRORS, UNKNOWN_ERROR } from '~/entities/error';
 import {
@@ -15,6 +15,7 @@ import {
 import { Condition, OrderBy } from '~/entities/query';
 import { Event } from '~/entities/event';
 import { mainnetProvider } from '~/libs/web3providers';
+import { isBetween } from '~/libs/dateUti';
 
 export const list: express.RequestHandler = async (req, res, next) => {
     const account = req.context.account;
@@ -82,7 +83,9 @@ export const list: express.RequestHandler = async (req, res, next) => {
 
         return res.json(result);
     } catch (e) {
-        return next(unknownException(EVENT_API_ERRORS.EVENT_UNKNOWN_ERROR, e as Error));
+        return next(
+            unknownException(EVENT_API_ERRORS.EVENT_UNKNOWN_ERROR, e as Error)
+        );
     }
 };
 
@@ -119,7 +122,9 @@ export const create: express.RequestHandler = async (req, res, next) => {
         const record = await createEvent(event);
         return res.json(record);
     } catch (e) {
-        return next(unknownException(EVENT_API_ERRORS.EVENT_UNKNOWN_ERROR, e as Error));
+        return next(
+            unknownException(EVENT_API_ERRORS.EVENT_UNKNOWN_ERROR, e as Error)
+        );
     }
 };
 
@@ -141,22 +146,27 @@ export const update: express.RequestHandler = async (req, res, next) => {
                 (r) => r.address === account.id && r.role === 'admin'
             )
         ) {
-            return next(badRequestException(EVENT_API_ERRORS.UNAUTHORIZED_ACCOUNT));
+            return next(
+                badRequestException(EVENT_API_ERRORS.UNAUTHORIZED_ACCOUNT)
+            );
         }
 
         // todo キャンセルだったり重要な情報はイベント x 拾前から変更不可にする
-        const isBetween = Interval.fromDateTimes(
-            event.startAt as Date,
-            event.endAt as Date
-        ).contains(DateTime.now());
-
         // 開催中の変更は不可能
-        if (isBetween) {
+        if (
+            isBetween(
+                DateTime.now(),
+                event.startAt as Date,
+                event.endAt as Date
+            )
+        ) {
             return next(badRequestException(EVENT_API_ERRORS.UPDATE_FORBIDDEN));
         }
         await setEvent(event);
         return res.json({ message: 'ok' });
     } catch (e) {
-        return next(unknownException(EVENT_API_ERRORS.EVENT_UNKNOWN_ERROR, e as Error));
+        return next(
+            unknownException(EVENT_API_ERRORS.EVENT_UNKNOWN_ERROR, e as Error)
+        );
     }
 };
