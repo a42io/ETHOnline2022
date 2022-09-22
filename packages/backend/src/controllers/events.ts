@@ -21,7 +21,6 @@ import { supportedChainIds } from '~/entities/nft';
 import { isValidAddress, isValidTokenId } from '~/libs/nft';
 
 export const list: express.RequestHandler = async (req, res, next) => {
-    const account = req.context.account;
     try {
         const cursor = req.query.cursor;
 
@@ -36,55 +35,61 @@ export const list: express.RequestHandler = async (req, res, next) => {
             operator: operator as 'desc' | 'asc',
         };
 
-        const result: { admin: Event[]; managers: Event[] } = {
-            admin: [],
-            managers: [],
+        const events = await getEvents([], orderBy, cursor as string, limit);
+
+        return res.json({ events });
+    } catch (e) {
+        return next(
+            unknownException(EVENT_API_ERRORS.EVENT_UNKNOWN_ERROR, e as Error)
+        );
+    }
+};
+
+export const my: express.RequestHandler = async (req, res, next) => {
+    const account = req.context.account;
+    const { role } = req.query;
+    try {
+        const cursor = req.query.cursor;
+
+        const l = Number(req.query.limit);
+        const limit: number = !isNaN(l) ? l : 10;
+
+        let operator = req.query.operator;
+        if (operator !== 'desc' && operator !== 'asc') operator = 'desc';
+
+        const orderBy: OrderBy = {
+            target: 'created_at',
+            operator: operator as 'desc' | 'asc',
         };
-        {
-            const condition: Condition[] = [
-                {
-                    target: 'host.address_or_ens',
-                    operator: '==',
-                    value: account.id,
-                },
-            ];
 
-            const events = await getEvents(
-                condition,
-                orderBy,
-                cursor as string,
-                limit
-            );
+        const condition: Condition[] =
+            role === 'admin'
+                ? [
+                      {
+                          target: 'host.address_or_ens',
+                          operator: '==',
+                          value: account.id,
+                      },
+                  ]
+                : [
+                      {
+                          target: 'managers',
+                          operator: 'array-contains-any',
+                          value: [
+                              { address: account.id, role: 'admin' },
+                              { address: account.id, role: 'operator' },
+                          ],
+                      },
+                  ];
 
-            if (events) {
-                result.admin.push(...events);
-            }
-        }
-        {
-            const condition: Condition[] = [
-                {
-                    target: 'managers',
-                    operator: 'array-contains-any',
-                    value: [
-                        { address: account.id, role: 'admin' },
-                        { address: account.id, role: 'operator' },
-                    ],
-                },
-            ];
+        const events = await getEvents(
+            condition,
+            orderBy,
+            cursor as string,
+            limit
+        );
 
-            const events = await getEvents(
-                condition,
-                orderBy,
-                cursor as string,
-                limit
-            );
-
-            if (events && events.length !== 0) {
-                result.managers.push(...events);
-            }
-        }
-
-        return res.json(result);
+        return res.json({ events });
     } catch (e) {
         return next(
             unknownException(EVENT_API_ERRORS.EVENT_UNKNOWN_ERROR, e as Error)

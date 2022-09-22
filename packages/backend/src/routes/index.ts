@@ -6,6 +6,7 @@ import {
     get as getEvent,
     update as updateEvent,
     create as createEvent,
+    my,
 } from '~/controllers/events';
 
 import {
@@ -32,18 +33,24 @@ router.get('/nonce', nonce);
 router.post('/signin', ethAuth, signin);
 
 /**
+ * Public API
+ */
+// events and ticket info
+router.get('/events', getEvents);
+router.get('/event/:eventId', getEvent);
+router.get('/tickets/:ticketId', getTicket);
+
+/**
  * Events
  */
-router.get('/events', accessTokenAuth, getEvents);
+router.get('/my', accessTokenAuth, my); // as admin or manager
 router.post('/events', accessTokenAuth, createEvent);
-router.get('/event/:eventId', getEvent);
 router.put('/event/:eventId', accessTokenAuth, updateEvent);
 
 /**
  * Tickets
  */
 router.get('/tickets', accessTokenAuth, getTickets);
-router.get('/tickets/:ticketId', getTicket);
 router.post('/tickets', ethAuth, issueTicket);
 router.post('/tickets/:ticketId', ethAuth, invalidateTicket);
 
