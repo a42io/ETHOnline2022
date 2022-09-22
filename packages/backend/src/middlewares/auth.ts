@@ -26,7 +26,7 @@ export function getTokenFromHeader(req: express.Request): string | undefined {
 
 export const accessTokenAuth: express.RequestHandler = async (
     req,
-    res,
+    _res,
     next
 ) => {
     const accessToken = getTokenFromHeader(req);
@@ -38,7 +38,9 @@ export const accessTokenAuth: express.RequestHandler = async (
 
     try {
         try {
-            req.context.jsonPayload = verifyJwt(accessToken);
+            req.context = {
+                jsonPayload: verifyJwt(accessToken),
+            };
         } catch (_e) {
             return next(
                 unauthorizedException(
@@ -47,7 +49,9 @@ export const accessTokenAuth: express.RequestHandler = async (
             );
         }
 
-        const account = await getAccount(res.locals.jsonPayload.data.id);
+        const account = await getAccount(
+            req.context.jsonPayload!.sub as string
+        );
         if (!account) {
             return next(
                 notFoundException(MIDDLEWARE_AUTH_ERRORS.ACCOUNT_NOT_FOUND)
@@ -71,7 +75,7 @@ export const ethAuth: express.RequestHandler = async (req, _res, next) => {
     try {
         const signedMessage = JSON.stringify(message, null, 2);
         const derivedAddress = utils.verifyMessage(signedMessage, signature);
-        const account = await getAccount(derivedAddress);
+        let account = await getAccount(derivedAddress);
         if (!account) {
             return next(
                 unauthorizedException(
@@ -88,7 +92,10 @@ export const ethAuth: express.RequestHandler = async (req, _res, next) => {
             );
         }
 
-        req.context.account = (await refreshNonce(account)) as Account;
+        account = await refreshNonce(account);
+        req.context = {
+            account: account as Account,
+        };
         return next();
     } catch (e) {
         return next(unknownException(UNKNOWN_ERROR, e as Error));

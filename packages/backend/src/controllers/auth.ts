@@ -33,12 +33,12 @@ export const nonce: express.RequestHandler = async (req, res, next) => {
     }
 };
 
-export const signin: express.RequestHandler = async (_req, res, next) => {
+export const signin: express.RequestHandler = async (req, res, next) => {
     try {
-        const user = res.locals.account;
+        const account = req.context.account;
         const exp = process.env.SESSION_EXPIRE;
-        const data = { id: user.id };
-        const accessToken = signJwt(exp as string, user.id, data);
+        const data = { id: account!.id };
+        const accessToken = signJwt(exp as string, account!.id, data);
         return res.json({ accessToken });
     } catch (e) {
         return next(
