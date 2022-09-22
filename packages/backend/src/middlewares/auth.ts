@@ -36,11 +36,10 @@ export const accessTokenAuth: express.RequestHandler = async (
         );
     }
 
+    let accountId;
     try {
         try {
-            req.context = {
-                jsonPayload: verifyJwt(accessToken),
-            };
+            accountId = verifyJwt(accessToken).sub;
         } catch (_e) {
             return next(
                 unauthorizedException(
@@ -49,15 +48,15 @@ export const accessTokenAuth: express.RequestHandler = async (
             );
         }
 
-        const account = await getAccount(
-            req.context.jsonPayload!.sub as string
-        );
+        const account = await getAccount(accountId as string);
         if (!account) {
             return next(
                 notFoundException(MIDDLEWARE_AUTH_ERRORS.ACCOUNT_NOT_FOUND)
             );
         }
-        req.context.account = account;
+        req.context = {
+            account,
+        };
         return next();
     } catch (e) {
         return next(unknownException(UNKNOWN_ERROR, e as Error));

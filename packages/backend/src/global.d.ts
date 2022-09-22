@@ -18,8 +18,7 @@ declare const process: {
 };
 
 interface Context {
-    account?: Account;
-    jsonPayload?: JwtPayload | string;
+    account: Account;
 }
 
 declare global {
