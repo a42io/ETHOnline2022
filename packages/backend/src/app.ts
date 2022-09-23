@@ -18,6 +18,13 @@ const app: express.Express = express();
 app.use(express.json());
 app.use(cors());
 app.use(express.urlencoded({ extended: true }));
+app.use((req, _res, next) => {
+    console.log('Request URL:', req.originalUrl);
+    console.log('Request Type:', req.method);
+    console.log('Request Header: ', JSON.stringify(req.headers));
+    console.log('Request Body: ', JSON.stringify(req.body));
+    next();
+});
 app.use(router);
 app.use(errorHandler);
 
