@@ -151,7 +151,7 @@ export const TICKET_API_ERRORS = {
     },
     VERIFIED_TICKET: {
         code: '0x0411',
-        description: 'Ticket Verified',
+        description: 'Ticket Already Verified',
     },
     INVALID_SIGNATURE: {
         code: '0x0412',

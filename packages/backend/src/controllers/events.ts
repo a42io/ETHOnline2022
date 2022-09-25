@@ -18,7 +18,11 @@ import { mainnetProvider } from '~/libs/web3providers';
 import { isBetween, isFuture, isValidTimeZone } from '~/libs/dateUti';
 import { ethers } from 'ethers';
 import { supportedChainIds } from '~/entities/nft';
-import { isValidAddress, isValidTokenId } from '~/libs/nft';
+import {
+    isValidAddress,
+    isValidTokenId,
+    getAccountAllowedNFTs,
+} from '~/libs/nft';
 
 export const list: express.RequestHandler = async (req, res, next) => {
     try {
@@ -104,7 +108,27 @@ export const get: express.RequestHandler = async (req, res, next) => {
         if (!event) {
             return next(notFoundException(EVENT_API_ERRORS.EVENT_NOT_FOUND));
         }
-        return res.json({ event });
+        return res.json(event);
+    } catch (e) {
+        return next(unknownException(UNKNOWN_ERROR, e as Error));
+    }
+};
+
+export const getAllowedNFTs: express.RequestHandler = async (
+    req,
+    res,
+    next
+) => {
+    const eventId = req.params.eventId;
+    const account = req.context.account;
+    try {
+        const event = await getEvent(eventId);
+        if (!event) {
+            return next(notFoundException(EVENT_API_ERRORS.EVENT_NOT_FOUND));
+        }
+
+        const result = await getAccountAllowedNFTs(account.id, event.allowList);
+        return res.json({ list: result });
     } catch (e) {
         return next(unknownException(UNKNOWN_ERROR, e as Error));
     }
@@ -125,10 +149,15 @@ export const create: express.RequestHandler = async (req, res, next) => {
             return next(badRequestException(EVENT_API_ERRORS.INVALID_MANAGERS));
         }
 
-        if (!isFuture(event.startAt as Date)) {
+        if (!isFuture(new Date(event.startAt as Date))) {
             return next(badRequestException(EVENT_API_ERRORS.INVALID_DATE));
         }
-        if (!isFuture(event.endAt as Date, event.startAt as Date)) {
+        if (
+            !isFuture(
+                new Date(event.endAt as Date),
+                new Date(event.startAt as Date)
+            )
+        ) {
             return next(badRequestException(EVENT_API_ERRORS.INVALID_DATE));
         }
 
@@ -138,7 +167,10 @@ export const create: express.RequestHandler = async (req, res, next) => {
 
         const isValidAllowList = event.allowList.every((r) => {
             if (r.availableUsageCount <= 0) return false;
-            if (r.tokenType === 'ENS' && !r.ens.endsWith('.eth')) return false;
+            if (r.tokenType === 'ENS') {
+                if (!r.ens.endsWith('.eth')) return false;
+                return true;
+            }
             if (r.tokenType === 'ERC1155' || r.tokenType === 'ERC721') {
                 if (!supportedChainIds.includes(r.chainId)) return false;
                 if (!isValidAddress(r.contractAddress)) return false;
@@ -154,7 +186,7 @@ export const create: express.RequestHandler = async (req, res, next) => {
             );
         }
 
-        if (!event.timezone || isValidTimeZone(event.timezone)) {
+        if (event.timezone && isValidTimeZone(event.timezone)) {
             return next(badRequestException(EVENT_API_ERRORS.INVALID_TIMEZONE));
         }
 
@@ -175,12 +207,12 @@ export const create: express.RequestHandler = async (req, res, next) => {
             cover: event.cover || '',
             description: event.description || '',
             allowList: event.allowList,
-            startAt: event.startAt as Date,
-            endAt: event.endAt as Date,
+            startAt: new Date(event.startAt as Date),
+            endAt: new Date(event.endAt as Date),
             host: event.host,
             isCanceled: false,
             managers: event.managers || [],
-            timezone: event.timezone,
+            timezone: event.timezone || 'Asia/Tokyo',
         };
 
         const result = await createEvent(record);
@@ -220,8 +252,8 @@ export const update: express.RequestHandler = async (req, res, next) => {
         if (
             isBetween(
                 DateTime.now(),
-                event.startAt as Date,
-                event.endAt as Date
+                new Date(event.startAt as Date),
+                new Date(event.endAt as Date)
             )
         ) {
             return next(badRequestException(EVENT_API_ERRORS.UPDATE_FORBIDDEN));
@@ -269,6 +301,7 @@ export const update: express.RequestHandler = async (req, res, next) => {
             return next(badRequestException(EVENT_API_ERRORS.INVALID_TIMEZONE));
         }
 
+        // todo date casting
         const record: Event = {
             id: event.id,
             title: event.title || '',

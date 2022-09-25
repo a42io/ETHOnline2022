@@ -7,6 +7,7 @@ import {
     update as updateEvent,
     create as createEvent,
     my,
+    getAllowedNFTs,
 } from '~/controllers/events';
 
 import {
@@ -37,8 +38,10 @@ router.post('/signin', ethAuth, signin);
  */
 // events and ticket info
 router.get('/events', getEvents);
-router.get('/event/:eventId', getEvent);
-router.get('/tickets/:ticketId', getTicket);
+router.get('/events/:eventId', getEvent);
+router.get('/proofs/:proofId', getTicket);
+
+router.get('/events/:eventId/allowedNFTs', accessTokenAuth, getAllowedNFTs);
 
 /**
  * Events
@@ -48,11 +51,11 @@ router.post('/events', accessTokenAuth, createEvent);
 router.put('/event/:eventId', accessTokenAuth, updateEvent);
 
 /**
- * Tickets
+ * Proofs
  */
-router.get('/tickets', accessTokenAuth, getTickets);
-router.post('/tickets', ethAuth, issueTicket);
-router.post('/tickets/:ticketId', ethAuth, invalidateTicket);
+router.get('/proofs', accessTokenAuth, getTickets);
+router.post('/proofs', ethAuth, issueTicket);
+router.post('/proofs/:proofId', ethAuth, invalidateTicket);
 
 /**
  * Verification

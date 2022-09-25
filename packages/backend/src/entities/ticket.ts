@@ -12,6 +12,17 @@ export type ENSTicket = {
     createdAt: Date | firestore.FieldValue;
     verifiedAt?: Date | firestore.FieldValue;
     invalidatedAt?: Date | firestore.FieldValue;
+    event: {
+        host: {
+            addressOrEns: string;
+            avatarUrl: string;
+        };
+        title: string;
+        description: string;
+        cover: string;
+        startAt: Date | firestore.FieldValue;
+        endAt: Date | firestore.FieldValue;
+    };
 };
 
 export type NFTTicket = {
@@ -30,6 +41,17 @@ export type NFTTicket = {
     createdAt: Date | firestore.FieldValue;
     verifiedAt?: Date | firestore.FieldValue;
     invalidatedAt?: Date | firestore.FieldValue;
+    event: {
+        host: {
+            addressOrEns: string;
+            avatarUrl: string;
+        };
+        title: string;
+        description: string;
+        cover: string;
+        startAt: Date | firestore.FieldValue;
+        endAt: Date | firestore.FieldValue;
+    };
 };
 
 export type Ticket = ENSTicket | NFTTicket;

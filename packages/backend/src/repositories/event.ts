@@ -18,7 +18,7 @@ export function toDB(event: Event | Omit<Event, 'id'>): DocumentData {
             address_or_ens: event.host.addressOrEns,
             avatar_url: event.host.avatarUrl,
         },
-        allowList: event.allowList.map((r) => {
+        allow_list: event.allowList.map((r) => {
             if (r.tokenType === 'ENS') {
                 return {
                     token_type: 'ENS',
@@ -135,7 +135,7 @@ export const getEvents = async (
     }
 
     const querySnapshot = await querySnapshotRef.get();
-    if (!querySnapshot.empty) return [];
+    if (querySnapshot.empty) return [];
     return querySnapshot.docs.map((r) => fromDB(r));
 };
 

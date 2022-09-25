@@ -9,6 +9,65 @@ import { BigNumber } from 'ethers';
 import { getAlchemyApiClient } from '~/libs/alchemyApiClient';
 import * as ethers from 'ethers';
 
+export async function getAccountAllowedNFTs(
+    account: string,
+    allowlistNFT: Array<AllowListValue>
+) {
+    const result = [];
+
+    for (const token of allowlistNFT) {
+        if (token.tokenType === 'ENS') {
+            const resolvedENS = await resolveENS(account);
+            // check if user has ENS
+            if (!resolvedENS) {
+                continue;
+            }
+
+            // allow list に登録されている ENS にマッチするかチェックする
+            const match = wcmatch(token.ens, {
+                separator: '.',
+            });
+            // resolve した ens が allowlist.ens に一致するか
+            if (match(resolvedENS)) {
+                result.push({
+                    ...token,
+                    accountENS: resolvedENS,
+                });
+            }
+        } else {
+            if (token.tokenId) {
+                const isTokenOwner = await isOwner(
+                    account,
+                    token.chainId,
+                    token.tokenType,
+                    token.contractAddress,
+                    token.tokenId
+                );
+                if (isTokenOwner) {
+                    console.log(token);
+                    result.push(token);
+                }
+            } else {
+                const apiClient = await getAlchemyApiClient(token.chainId);
+                const { data } = await apiClient.get('/getNFTs', {
+                    params: {
+                        owner: account,
+                        'contractAddresses[]': token.contractAddress,
+                    },
+                });
+                return data.ownedNfts.map((r: any) => {
+                    return {
+                        ...token,
+                        tokenId: ethers.BigNumber.from(r.id.tokenId).toString(),
+                    };
+                });
+            }
+        }
+    }
+
+    return result;
+}
+
 export function isAllowListIncluded(
     ensOrNFT: AllowListValue | Omit<AllowListValue, 'availableUsageCount'>,
     allowlistNFT: Array<AllowListValue>
@@ -105,6 +164,14 @@ export async function lookupAddress(
         return { ens: null, address: null };
     } catch (e) {
         return { ens: null, address: null };
+    }
+}
+
+export async function resolveENS(address: string) {
+    try {
+        return await mainnetProvider.lookupAddress(address);
+    } catch (e) {
+        return null;
     }
 }
 

@@ -47,9 +47,9 @@ function isValidMessage(message: {
         !message.nonce ||
         (!message.ens &&
             (!message.nft ||
-                !message.nft.chainId ||
                 !message.nft.tokenType ||
-                message.nft.contractAddress ||
+                !message.nft.chainId ||
+                !message.nft.contractAddress ||
                 !message.nft.tokenId))
     );
 }
@@ -58,6 +58,8 @@ export const list: express.RequestHandler = async (req, res, next) => {
     const account = req.context.account;
     try {
         const cursor = req.query.cursor || undefined;
+        const validated = req.query.validated || false;
+        const eventId = req.query.eventId || undefined;
 
         const l = Number(req.query.limit);
         const limit: number = !isNaN(l) ? l : 10;
@@ -70,15 +72,24 @@ export const list: express.RequestHandler = async (req, res, next) => {
             operator: operator as 'desc' | 'asc',
         };
 
-        const condition: Condition[] = [
-            {
-                target: 'host.address_or_ens',
+        const condition: Condition[] = [];
+        if (eventId) {
+            condition.push({
+                target: 'event_id',
                 operator: '==',
-                value: account.id,
-            },
-        ];
+                value: eventId,
+            });
+        }
 
-        const tickets = await getAccountTickets(
+        if (validated) {
+            condition.push({
+                target: 'validated',
+                operator: '==',
+                value: true,
+            });
+        }
+
+        const proofs = await getAccountTickets(
             account.id,
             condition,
             orderBy,
@@ -86,11 +97,7 @@ export const list: express.RequestHandler = async (req, res, next) => {
             limit
         );
 
-        if (!tickets) {
-            return next(notFoundException(TICKET_API_ERRORS.TICKETS_NULL));
-        }
-
-        return res.json({ tickets });
+        return res.json({ proofs });
     } catch (e) {
         return next(
             unknownException(TICKET_API_ERRORS.TICKET_UNKNOWN_ERROR, e as Error)
@@ -99,14 +106,18 @@ export const list: express.RequestHandler = async (req, res, next) => {
 };
 
 export const get: express.RequestHandler = async (req, res, next) => {
-    const ticketId = req.params.ticketId;
+    const proofId = req.params.proofId;
     try {
-        const ticket = await getTicket(ticketId);
-        if (!ticket) {
+        const proof = await getTicket(proofId);
+        if (!proof) {
             return next(notFoundException(TICKET_API_ERRORS.TICKET_NOT_FOUND));
         }
+        const event = await getEvent(proof.eventId);
+        if (!event) {
+            return next(notFoundException(TICKET_API_ERRORS.EVENT_NOT_FOUND));
+        }
         return res.json({
-            ticket,
+            ...proof,
         });
     } catch (e) {
         return next(
@@ -167,6 +178,7 @@ export const issue: express.RequestHandler = async (req, res, next) => {
             const isTokenOwner = await isOwner(
                 account.id,
                 nft.chainId,
+                nft.tokenType,
                 nft.contractAddress,
                 nft.tokenId
             );
@@ -199,22 +211,38 @@ export const issue: express.RequestHandler = async (req, res, next) => {
         // ticket 生成
         let ticket;
         if (ens) {
-            ticket = await createTicket(event.id, {
+            ticket = await createTicket(account.id, {
                 nonce,
                 account: account.id,
                 eventId: event.id,
                 invalidated: false,
                 ens: ens as string,
                 signature,
+                event: {
+                    host: event.host,
+                    title: event.title,
+                    description: event.description,
+                    cover: event.cover,
+                    startAt: event.startAt,
+                    endAt: event.endAt,
+                },
             } as ENSTicket);
         } else {
-            ticket = await createTicket(event.id, {
+            ticket = await createTicket(account.id, {
                 nonce,
                 account: account.id,
                 eventId: event.id,
                 invalidated: false,
                 nft,
                 signature,
+                event: {
+                    host: event.host,
+                    title: event.title,
+                    description: event.description,
+                    cover: event.cover,
+                    startAt: event.startAt,
+                    endAt: event.endAt,
+                },
             } as NFTTicket);
         }
 
@@ -235,7 +263,7 @@ export const issue: express.RequestHandler = async (req, res, next) => {
 };
 
 export const verify: express.RequestHandler = async (req, res, next) => {
-    const { message, signature, ticketId } = req.body;
+    const { message, signature, proofId } = req.body;
     const { eventId, nft, ens, nonce } = message;
 
     const manager = req.context.account;
@@ -277,7 +305,7 @@ export const verify: express.RequestHandler = async (req, res, next) => {
         }
 
         // check if the ticket exists
-        const ticket = await getTicket(ticketId);
+        const ticket = await getTicket(proofId);
         if (!ticket) {
             return next(notFoundException(TICKET_API_ERRORS.TICKET_NOT_FOUND));
         }
@@ -357,6 +385,7 @@ export const verify: express.RequestHandler = async (req, res, next) => {
             const isTokenOwner = await isOwner(
                 ticket.account,
                 nft.chainId,
+                nft.tokenType,
                 nft.contractAddress,
                 nft.tokenId
             );
@@ -425,18 +454,18 @@ export const verify: express.RequestHandler = async (req, res, next) => {
         }
 
         // update ticket verified_at
-        await setVerifiedTicket(ticket.account, ticketId);
+        await setVerifiedTicket(ticket.account, proofId);
 
         // create verification log
         await createVerificationLog(event.id, {
             account: ticket.account,
-            ticketId,
+            ticketId: proofId,
             ens: (ticket as ENSTicket)?.ens,
             nft: (ticket as NFTTicket)?.nft,
             totalUsageCount: tokenStatus.totalUsageCount,
         });
 
-        return res.json(ticket);
+        return res.json({ ...ticket, totalCount: tokenStatus.totalUsageCount });
     } catch (e) {
         return next(
             unknownException(TICKET_API_ERRORS.TICKET_UNKNOWN_ERROR, e as Error)
@@ -489,6 +518,7 @@ export const invalidate: express.RequestHandler = async (req, res, next) => {
             const isTokenOwner = await isOwner(
                 account.id,
                 nft.chainId,
+                nft.tokenType,
                 nft.contractAddress,
                 nft.tokenId
             );

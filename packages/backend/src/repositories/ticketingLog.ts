@@ -89,7 +89,7 @@ export const getTicketingLogs = async (
     }
 
     const querySnapshot = await querySnapshotRef.get();
-    if (!querySnapshot.empty) return [];
+    if (querySnapshot.empty) return [];
     return querySnapshot.docs.map((r) => fromDB(r));
 };
 

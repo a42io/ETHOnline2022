@@ -25,6 +25,17 @@ export function toDB(
                   token_id: (ticket as NFTTicket).nft.tokenId,
               }
             : undefined,
+        event: {
+            cover: ticket.event.cover,
+            description: ticket.event.description,
+            end_at: ticket.event.endAt,
+            host: {
+                address_or_ens: ticket.event.host.addressOrEns,
+                avatar_url: ticket.event.host.avatarUrl,
+            },
+            start_at: ticket.event.startAt,
+            title: ticket.event.title,
+        },
         invalidated: ticket.invalidated,
         created_at: ticket.createdAt,
         verified_at: ticket.verifiedAt,
@@ -34,8 +45,19 @@ export function toDB(
 
 export function fromDB(snapshot: DocumentSnapshot): Ticket {
     const nft = snapshot.get('nft');
-
+    const event = snapshot.get('event');
     return {
+        event: {
+            cover: event.cover,
+            description: event.description,
+            endAt: event.end_at?.toDate(),
+            host: {
+                addressOrEns: event.host.address_or_ens,
+                avatarUrl: event.host.avatar_url,
+            },
+            startAt: event.start_at?.toDate(),
+            title: event.title,
+        },
         id: snapshot.id,
         account: snapshot.get('account'),
         eventId: snapshot.get('event_id'),
@@ -99,7 +121,7 @@ export const getAccountTickets = async (
     }
 
     const querySnapshot = await querySnapshotRef.get();
-    if (!querySnapshot.empty) return [];
+    if (querySnapshot.empty) return [];
 
     return querySnapshot.docs.map((r) => fromDB(r));
 };
@@ -123,8 +145,9 @@ export const createTicket = async (
     account: string,
     ticket: Omit<Ticket, 'id' | 'createdAt'>
 ): Promise<Ticket> => {
-    const ref = getAccountTicketsPath(account);
-    const id = ref.doc().id;
+    const accountRef = getAccountTicketsPath(account);
+
+    const id = ticketRef.doc().id;
     const data = toDB({
         ...ticket,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -133,7 +156,7 @@ export const createTicket = async (
     // ticket/{id}
     await ticketRef.doc(id).set(data, { merge: true });
     // accounts/{accountId}/tickets/{id}
-    await ref.doc(id).set(data, { merge: true });
+    await accountRef.doc(id).set(data, { merge: true });
 
     return { id, ...ticket } as Ticket;
 };
