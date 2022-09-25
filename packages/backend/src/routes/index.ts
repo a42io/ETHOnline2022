@@ -15,7 +15,7 @@ import {
     get as getTicket,
     issue as issueTicket,
     verify as verifyTicket,
-    invalidate as invalidateTicket,
+    invalidate as invalidateTicket, deleteTicket
 } from '~/controllers/tickets';
 
 const router: express.Router = express.Router();
@@ -56,6 +56,7 @@ router.put('/event/:eventId', accessTokenAuth, updateEvent);
 router.get('/proofs', accessTokenAuth, getTickets);
 router.post('/proofs', ethAuth, issueTicket);
 router.post('/proofs/:proofId', ethAuth, invalidateTicket);
+router.delete('/proofs/:proofId', accessTokenAuth, deleteTicket);
 
 /**
  * Verification
