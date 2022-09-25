@@ -149,9 +149,6 @@ export const create: express.RequestHandler = async (req, res, next) => {
             return next(badRequestException(EVENT_API_ERRORS.INVALID_MANAGERS));
         }
 
-        if (!isFuture(new Date(event.startAt as Date))) {
-            return next(badRequestException(EVENT_API_ERRORS.INVALID_DATE));
-        }
         if (
             !isFuture(
                 new Date(event.endAt as Date),
