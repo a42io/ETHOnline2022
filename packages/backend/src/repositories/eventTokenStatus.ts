@@ -57,10 +57,10 @@ export const getTokenStatus = async (
 
 export const createTokenStatus = async (
     eventId: string,
-    tokenType: TokenType
+    tokenType: TokenType,
+    id: string
 ): Promise<EventTokenStatus> => {
     const ref = getStatusPath(eventId);
-    const id = ref.doc().id;
 
     const status: Omit<EventTokenStatus, 'id'> = {
         totalUsageCount: 1,
@@ -79,13 +79,13 @@ export const incrementUsageCount = async (
 ): Promise<EventTokenStatus> => {
     const snapshot = await getStatusPath(eventId).doc(id).get();
     if (!snapshot.exists) {
-        return await createTokenStatus(eventId, tokenType);
+        return await createTokenStatus(eventId, tokenType, id);
     }
 
     await snapshot.ref.set({
         total_usage_count: firestore.FieldValue.increment(1),
         updatedAt: firestore.FieldValue.serverTimestamp(),
-    });
+    }, { merge: true });
 
     const status = fromDB(snapshot);
     status.totalUsageCount += 1;

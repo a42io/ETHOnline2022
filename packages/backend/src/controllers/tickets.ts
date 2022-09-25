@@ -14,7 +14,7 @@ import {
     createTicket,
     setVerifiedTicket,
     getAccountTicket,
-    invalidateTicket,
+    invalidateTicket, deleteProof
 } from '~/repositories/ticket';
 import { getEvent } from '~/repositories/event';
 import { isAllowListIncluded, isOwner, lookupAddress } from '~/libs/nft';
@@ -579,6 +579,35 @@ export const invalidate: express.RequestHandler = async (req, res, next) => {
         });
 
         return res.json(ticket);
+    } catch (e) {
+        return next(
+            unknownException(TICKET_API_ERRORS.TICKET_UNKNOWN_ERROR, e as Error)
+        );
+    }
+};
+
+export const deleteTicket: express.RequestHandler = async (req, res, next) => {
+    const { proofId } = req.params;
+
+    if (!proofId) {
+        return next(badRequestException(TICKET_API_ERRORS.INVALID_BODY));
+    }
+
+    const account = req.context.account;
+
+    try {
+
+        const currentTicket = await getAccountTicket(
+            account.id,
+            proofId
+        );
+        if (!currentTicket || currentTicket.invalidated) {
+            return next(notFoundException(TICKET_API_ERRORS.TICKET_NOT_FOUND));
+        }
+
+        await deleteProof(account.id, proofId);
+
+        return res.json({ message: 'ok' });
     } catch (e) {
         return next(
             unknownException(TICKET_API_ERRORS.TICKET_UNKNOWN_ERROR, e as Error)

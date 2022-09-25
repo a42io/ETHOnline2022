@@ -192,3 +192,16 @@ export const invalidateTicket = async (
 
     return await createTicket(account, ticket);
 };
+
+
+export const deleteProof = async (
+    account: string,
+    proofId: string
+): Promise<void> => {
+    // ticket/{id}
+    await ticketRef.doc(proofId).delete();
+
+    const ref = getAccountTicketsPath(account);
+    // accounts/{accountId}/tickets/{id}
+    await ref.doc(proofId).delete();
+};
