@@ -35,3 +35,44 @@ go:
 	make tag
 	make push
 	make init-deploy
+
+
+#----------------------------------------------------------------------------------------------------------------------------------------
+
+init-prd:
+	yarn
+	gcloud config set project openproof
+	gcloud auth configure-docker
+	gcloud config set run/platform managed
+	gcloud config set run/region us-west1
+
+build-prd:
+	docker build --platform linux/amd64 -t openproof/api-ethonline2022 .
+
+
+tag-prd:
+	docker tag openproof/api-ethonline2022:latest gcr.io/openproof/api-ethonline2022
+
+
+push-prd:
+	docker push gcr.io/openproof/api-ethonline2022
+
+
+init-deploy-prd:
+	gcloud run deploy api-ethonline2022 --image gcr.io/openproof/api-ethonline2022 --platform managed --region us-west1 \
+   	--update-env-vars FIREBASE_SECRET_PATH=/etc/secrets/firebase.json,PROJECT_ID=openproof \
+   	--update-env-vars SESSION_EXPIRE=7d,JWT_ALGORITHM=HS256 \
+	--update-secrets /etc/secrets/firebase.json=FIREBASE_SECRET_JSON:latest,JWT_SECRET=JWT_SECRET:latest \
+	--update-secrets ALCHEMY_MAINNET_API_KEY=ALCHEMY_MAINNET_API_KEY:latest,ALCHEMY_MATIC_API_KEY=ALCHEMY_MATIC_API_KEY:latest \
+	--update-secrets ALCHEMY_OPTIMISM_API_KEY=ALCHEMY_OPTIMISM_API_KEY:latest,ALCHEMY_ARBITRUM_API_KEY=ALCHEMY_ARBITRUM_API_KEY:latest \
+
+
+
+deploy-prd:
+	gcloud run deploy api-ethonline2022 --image gcr.io/openproof/api-ethonline2022 --platform managed
+
+go-prd:
+	make build-prd
+	make tag-prd
+	make push-prd
+	make init-deploy-prd
